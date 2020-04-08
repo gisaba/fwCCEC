@@ -2,7 +2,8 @@
 #ifndef F_CPU               // if F_CPU was not defined in Project -> Properties
 #define F_CPU 8000000UL    // define it now as 8 MHz unsigned long
 #endif
-
+/*********************************************************************************************
+ Progetto Centralina di Conteggio
 /*********************************************************************************************/
 #include <avr/io.h>       // this is always included in AVR programs
 #include <util/delay.h>
