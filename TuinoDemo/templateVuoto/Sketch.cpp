@@ -2,8 +2,7 @@
 #ifndef F_CPU               // if F_CPU was not defined in Project -> Properties
 #define F_CPU 8000000UL    // define it now as 8 MHz unsigned long
 #endif
-/*********************************************************************************************
- Progetto Centralina di Conteggio
+
 /*********************************************************************************************/
 #include <avr/io.h>       // this is always included in AVR programs
 #include <util/delay.h>
@@ -17,7 +16,6 @@
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
 #include <SPIMemory.h>
-
 /*********************************************************************************************/
 
 static const uint8_t D42 = 42;
@@ -50,12 +48,15 @@ static const uint8_t RELE1 = PORTC7;
 static const uint8_t RELE2 = PORTA7;
 
 static inline void initSS_FLASH()  { DDRB |= (1 << PB4); } // set DDRB bit 4, sets PB4 for output
-static inline void initSS_ETH()   { DDRC |= (1 << PC4); } // set DDRC bit 4, sets PC4 for output
-static inline void setSS_ETH()    { PORTC &= ~(1 << PC4); }
-static inline void resetSS_ETH()  { PORTC |= (1 << PC4);  }
-static inline void setSS_FLASH()  { PORTC &= ~(1 << PB4); }
-static inline void resetSS_FLASH()  { PORTC |= (1 << PB4);  }
-    
+static inline void initSS_ETH()    { DDRC |= (1 << PC4); } // set DDRC bit 4, sets PC4 for output
+static inline void enable_ETH()    { PORTC &= ~(1 << PC4); } // Set 0 Bit 4 PORTC Register
+static inline void enable_FLASH()  { PORTB &= ~(1 << PB4); } // Set 0 Bit 4 PORTB Register
+static inline void disable_ETH()   { PORTC |= (1 << PC4);  } // Set 1 Bit 4 PORTC Register
+static inline void disable_FLASH() { PORTB |= (1 << PB4);  } // Set 1 Bit 4 PORTB Register
+
+const byte PCA9534_I2C_ADDRESS   =  0x20;
+const byte PCA9534_I2C_ADDRESS_R =  0x41;
+
 /***********************************************************************************************/
 
 // these macros make checking if bits are set or clear easier and more readable
@@ -70,9 +71,6 @@ static inline void resetSS_FLASH()  { PORTC |= (1 << PB4);  }
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 #define NUM_OF_CONSECUTIVE_PRESSES 1
 #define NUM_OF_CONSECUTIVE_NON_PRESSES 2
-
-const byte PCA9534_I2C_ADDRESS   =  0x20;
-const byte PCA9534_I2C_ADDRESS_R =  0x41;
 
 #define PCA9534_IP_REGISTER     0x00
 #define PCA9534_OP_REGISTER     0x01
@@ -105,11 +103,7 @@ String strURLAPI = "";
 
 unsigned long updatedisplayLCD = 0;
 
-byte ACK = 0x0F;
-byte NACK = 0xFF;
-
 int Litri = 0;              // Variabile per il conteggio dei litri erogati
-int LAck = 0;               // Lunghezza Buffer di ricezione Ethernet
 int Connected = 0;
 int Autenticato = LOW;      // Semaforo Autenticazione Operatore
 int InviaTarga = LOW;       // Semaforo Validazione Targa/Km Mezzo
@@ -141,7 +135,7 @@ char MessaggioToServer[100] = "";
 /********************************************************************************************/
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
-IPAddress servizio(192, 168, 5, 30);    // IP Macchina dove risiede il servizio TCP
+IPAddress servizio(192, 168, 5, 9);    // IP Macchina dove risiede il servizio TCP
 byte ip[] = { 192, 168, 0, 50 };
 IPAddress myDns(192,168,1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
@@ -195,14 +189,6 @@ char MappaKeys[ROWS][COLS] = { // Tastierino Definitivo
   {'7','8','9','C'},
   {'*','0','#','.'}
 };
-
-void controlSPI_bus(boolean FLASH,boolean ETH) {
-  
-  if (FLASH) setSS_FLASH(); else resetSS_FLASH();
-  
-  if (ETH) setSS_ETH(); else resetSS_ETH();
-  
-};
   
 void InizializzaEthernet()
 {
@@ -250,14 +236,258 @@ void initIOExpander()
   Wire.endTransmission();
 
   Wire.begin();
-
 }
+
+/************************************************************/
+uint32_t addr = 16101;
+
+#define TRUE 1
+#define FALSE 0
+
+
+void printLine() {
+  Serial.println();
+  for (uint8_t i = 0; i < 125; i++) {
+    Serial.print("-");
+  }
+  Serial.println();
+}
+
+void printTab(uint8_t _times) {
+  for (uint8_t i = 0; i < _times; i++) {
+    Serial.print("\t");
+  }
+}
+
+void pass(bool _status) {
+  printTab(1);
+  Serial.print("   ");
+  if (_status) {
+    Serial.print("PASS");
+  }
+  else {
+    Serial.print("FAIL");
+  }
+  printTab(1);
+}
+
+SPIFlash flash;
+
+void printUniqueID(void) {
+  long long _uniqueID = flash.getUniqueID();
+  if (_uniqueID) {
+    Serial.print("Unique ID: ");
+    Serial.print(uint32_t(_uniqueID / 1000000L));
+    Serial.print(uint32_t(_uniqueID % 1000000L));
+    Serial.print(", ");
+    Serial.print("0x");
+    Serial.print(uint32_t(_uniqueID >> 32), HEX);
+    Serial.print(uint32_t(_uniqueID), HEX);
+  }
+   printLine();
+}
+
+void FlasheraseSector(uint32_t _addr) {
+	uint32_t _time /*_addr*/;
+	//_addr = random(0, 0xFFFFF);
+	printTab(3);
+	Serial.print("Erase 4KB");
+	printTab(1);
+	if (flash.eraseSector(_addr)) {
+		_time = flash.functionRunTime();
+		pass(TRUE);
+
+		Serial.print("Flash Diagnostic ");
+		Serial.println("Erase 4KB OK");
+		printTab(1);
+		printLine();
+		_delay_ms(1000);
+	}
+	else {
+		pass(FALSE);
+	}
+}
+void erogazioniSaver(uint32_t _addr,String e) {
+  
+  #define ARRAYSIZE 30
+ 
+  struct Erogazioni {
+    uint16_t n;
+    String e1[ARRAYSIZE];
+  };
+  
+  Erogazioni _d;
+ 
+  _d.n = 30;
+  _d.e1[1] = e; // "000;AABBCCDD;26555;D;;26.30";  
+     
+  uint32_t wTime = 0;
+  uint32_t addr, rTime;
+
+  addr = _addr; //random(0, 0xFFFFF);
+
+ _delay_ms(5); 
+ FlasheraseSector(addr);
+ _delay_ms(5);  
+
+ if (flash.writeAnything(addr, _d)) {
+   // wTime = flash.functionRunTime();  
+   Serial.println("Scrittura in memoria eseguita");  
+   printLine();
+  }
+   
+}
+
+void erogazioniRead(uint32_t _addr) {
+  
+  #define ARRAYSIZE 30
+ 
+  struct Erogazioni {
+    uint16_t n;
+    String e1[ARRAYSIZE];
+  };
+
+  Erogazioni _data;
+     
+  addr = _addr; //random(0, 0xFFFFF);
+  
+  /**********************************************/
+  if (flash.readAnything(addr, _data))
+  {
+  
+  printTab(3);
+  Serial.print ("n° Erogazioni:" );
+  printLine();
+  printTab(2);  
+  Serial.println("0x");
+  Serial.print(_data.n,HEX); 
+  Serial.println("Erogazione 1 : ");
+  Serial.print(_data.e1[1]);
+  pass(TRUE);
+  //return _data.e1[1];
+  }
+
+  pass(FALSE);
+  //return "ERROR";
+  /***********************************************/
+  printLine();
+}
+
+void FlashpowerDown() {
+  uint32_t _time;
+  printTab(3);
+  Serial.print("Power Down");
+  printTab(1);
+  if (flash.powerDown()) {
+    //_time = flash.functionRunTime();
+    pass(TRUE);
+  //  printTime(_time, 0);
+  
+  Serial.print("Flash Diagnostic ");
+  Serial.print("Power Down OK");  
+  _delay_ms(1000);
+  printTab(1);
+  printLine();  
+  }
+  else {
+    pass(FALSE);
+    printTab(2);
+    Serial.print("Not all chips support power down. Check your datasheet.");
+  }
+}
+
+void FlashpowerUp() {
+  uint32_t _time;
+  printTab(3);
+  Serial.print("Power Up");
+  printTab(1);
+  if (flash.powerUp()) {
+ //   _time = flash.functionRunTime();
+    pass(TRUE);
+ //   printTime(_time, 0);
+  Serial.print("Flash Diagnostic ");
+  Serial.print("Power Up OK");
+  _delay_ms(1000);
+  printTab(1);
+  printLine(); 
+  }
+  else {
+    pass(FALSE);
+    printTab(2);
+  }
+}
+
+
+
+void eraseChipTest() {
+  uint32_t _time;
+  printTab(3);
+  Serial.print("Erase Chip");
+  printTab(1);
+  if (flash.eraseChip()) {
+    //_time = flash.functionRunTime();
+    pass(TRUE);
+    // printTime(_time, 0);
+  Serial.print("Flash Diagnostic ");
+  Serial.print("Erase Chip OK");
+  _delay_ms(1000);
+  printTab(1);
+  printLine(); 
+  }
+  else {
+    pass(FALSE);
+  }
+}
+
+bool getID() {
+  Serial.println();
+  uint32_t JEDEC = flash.getJEDECID();
+  if (!JEDEC) {
+    Serial.println("No comms. Check wiring. Is chip supported? If unable to fix, raise an issue on Github");
+    return false;
+  }
+  else {
+    Serial.print("JEDEC ID: 0x");
+    Serial.println(JEDEC, HEX);
+    Serial.print("Man ID: 0x");
+    Serial.println(uint8_t(JEDEC >> 16), HEX);
+    Serial.print("Memory ID: 0x");
+    Serial.println(uint8_t(JEDEC >> 8), HEX);
+    Serial.print("Capacity: ");
+    Serial.println(flash.getCapacity());
+    Serial.print("Max Pages: ");
+    Serial.println(flash.getMaxPage());
+    printUniqueID();
+
+  lcd.clear();
+  lcd.print("JEDEC ID: 0x" );
+  lcd.print(JEDEC, HEX);
+  lcd.setCursor(0,1);
+  lcd.print("Cap: ");
+  lcd.print(flash.getCapacity());
+  lcd.setCursor(0,2);
+  lcd.print("Memory ID: 0x");
+  lcd.print(uint8_t(JEDEC >> 8), HEX);
+  lcd.setCursor(0,3);
+  lcd.print("Max Pages: ");
+  lcd.print(flash.getMaxPage());
+  _delay_ms(3000);
+  }
+  return true;
+}
+
+/********************************************************************************************/
 
 void setup() {
 
- // Serial.begin(9600);
- // Serial.println(" inizio Setup ......");
+   //Serial.begin(9600);
+   Serial.println(" inizio Setup ......");
  
+  initSS_ETH();
+  disable_ETH();
+  initSS_FLASH();
+  disable_FLASH();
+  _delay_ms(1);
   
   DDRC |= (1 << RELE1);  // Rele1
   DDRA |= (1 << RELE2);  // Rele2   // set PA7 e PC7 come output 
@@ -311,9 +541,36 @@ void setup() {
   nfc.setPassiveActivationRetries(0xFF);   
   nfc.SAMConfig();
 
-  /***************************SPY FLASH*************************/
-  
+  /***************************SPY FLASH*************************/  
 
+  enable_FLASH();
+  
+  if (flash.error()) {
+    Serial.println(flash.error(VERBOSE));
+  }
+
+  flash.begin();
+
+  if (getID()) {
+
+    printLine();
+    printTab(7);
+    Serial.print("Testing library code");
+    printLine();
+    printTab(3);
+    Serial.print("Function");
+    printLine();
+    printTab(2);   
+    
+    FlashpowerUp();
+    Serial.println();    
+    Serial.println();   
+    eraseChipTest();
+    Serial.println();   
+    erogazioniSaver(addr,"Prima");     
+    FlashpowerDown();
+    Serial.println();
+  }
   /*************************** RTC ************************/
   while (!DS3231M.begin()) {                                                  // Initialize RTC communications    //
     Serial.println(F("Unable to find DS3231MM. Checking again in 3s."));      // Show error text                  //
@@ -727,17 +984,7 @@ uint8_t GetAteValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,Str
  int valida = 0;
 
  if ( (ClientHTTP.connect(serverWEB, Port))) 
-  {
-    /*lcd.clear();
-    lcd.setCursor(0,1);
-    lcd.print("Server OK");
-    lcd.setCursor(0,3);
-    lcd.print(ATeCode);
-    _delay_ms(200);*/
-    
-    
-    //_delay_ms(80);
-  
+  {      
     //strURLAPI = "GET /api/ATe/GetAssociazioneByRfidCode?rfidCode=63cfe34d HTTP/1.1\r\n";
     //strURLAPI = "GET /api/ATe/GetAssociazioneByRfidCode?rfidCode=63CFE34D HTTP/1.1\r\n";
     strURLAPI = "GET /api/ATe/GetAssociazioneByRfidCode?rfidCode=" + ATeCode +"  HTTP/1.1\r\n";
@@ -998,10 +1245,16 @@ void Azzera()
    clientToServizio.stop();
    clientREST.flush();
    clientREST.stop();
+   Connected = false;
    
-   resetSS_ETH(); 
-   setSS_ETH();
-   
+   enable_FLASH();
+   _delay_ms(5);
+   disable_FLASH();
+   _delay_ms(5);
+   disable_ETH();
+   _delay_ms(5); 
+   enable_ETH(); 
+     
    SET_BIT(PORTA,A1);
    SET_BIT(PORTA,A2);
    
@@ -1013,6 +1266,11 @@ void Azzera()
    lcd.noDisplay();
    secs = 0;
    UltimoPassaggioStato = 0;
+   
+   printLine();
+   Serial.println("Azzera....... OK");
+   printLine();
+   
    stato_procedura = -2;
 }
 
@@ -1025,18 +1283,18 @@ void CompletoRifornimentoPerInvioDati(int P_stato)
     Messaggio.toCharArray(MessaggioToServer, 100);  
 }
 
-
 /**************************LOOP PROCEDURA************************************/
 void loop() {
       
   switch (stato_procedura) {
     case -2:
-    { //cli(); // disable interrupt
+    { //cli(); // disable interrupt      
+            
       righeDisplay[1] =  "";
         righeDisplay[2] = "Setting....";
       righeDisplay[3] =  "";
       
-        displayLCD(righeDisplay,stato_procedura,100);
+      displayLCD(righeDisplay,stato_procedura,100);
       
       _delay_ms(200);     
       stato_procedura++;
@@ -1081,19 +1339,16 @@ void loop() {
       
         if ((ATe != "ERRORE") && (BIT_IS_CLEAR(PORTC,4)))
         { 
-           
            Serial.println("");
            Serial.print("***************************************************************");
            Serial.println(" Tessera ID : " + ATe);
            Serial.print("***************************************************************");
            Serial.println("Riconoscimento Tessera .............");
-           
-           
+                     
            RaccoltaDati[0] = ATe;
            
            lcd.backlight();
-           lcd.display();
-          
+           lcd.display();          
            _delay_ms(10);
             
            righeDisplay[1] = " * AUTENTICAZIONE *";
@@ -1110,42 +1365,44 @@ void loop() {
          // Se la CARD è valida memorizza in memorria l'operazione e prosegui
          // Altrimenti Memorizza in Memoria e Azzera la procedura.
       
-          stato_procedura++; // da commentare
+         stato_procedura++; // da commentare
          
-         
-//         if (GetAteValidation(80,serverATE,clientREST,ATe)) 
-//          { 
-//            SET_BIT(PORTC,PC4);
-//            
-//            //Buzzer(1,400); 
-//            
-//            righeDisplay[1] =  "****** ESITO *****";
-//            righeDisplay[2] =  "";
-//            righeDisplay[3] = "Utente Riconosciuto";
-//            
-//            displayLCD(righeDisplay,stato_procedura,100);
-//            _delay_ms(1000);
-//            
-//            avanzaStato(TinputTarga); 
-//          } 
-//         else 
-//          { 
-//            //Buzzer(3,200);
-//            
-//            righeDisplay[1] =  "****** ESITO *****";
-//            righeDisplay[2] =  "";
-//            righeDisplay[3] = "Utente Sconosciuto";
-//            
-//            displayLCD(righeDisplay,stato_procedura,100);
-//            _delay_ms(1000);
-//            Azzera();
-//           }   
+         /****************************************************
+         if (GetAteValidation(80,serverATE,clientREST,ATe)) 
+          { 
+            SET_BIT(PORTC,PC4);
+            
+            //Buzzer(1,400); 
+            
+            righeDisplay[1] =  "****** ESITO *****";
+            righeDisplay[2] =  "";
+            righeDisplay[3] = "Utente Riconosciuto";
+            
+            displayLCD(righeDisplay,stato_procedura,100);
+            _delay_ms(1000);
+            
+            avanzaStato(TinputTarga); 
+          } 
+         else 
+          { 
+            //Buzzer(3,200);
+            
+            righeDisplay[1] =  "****** ESITO *****";
+            righeDisplay[2] =  "";
+            righeDisplay[3] = "Utente Sconosciuto";
+            
+            displayLCD(righeDisplay,stato_procedura,100);
+            _delay_ms(1000);
+            Azzera();
+           }   
+          *****************************************************/
     }
     break;
     case 2:
     {   
-      resetSS_ETH();
-      setSS_ETH();
+      disable_ETH();
+      _delay_ms(2);
+      enable_ETH();
 
       // da commentare
       // Carburante = "D"; // Simulo Abilitazione Diesel
@@ -1163,11 +1420,11 @@ void loop() {
     break;
     case 3:
     {       
-       getTastoPremuto_x_targa();      
+       getTastoPremuto_x_targa();
       String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC
       _delay_ms(10);
 
-      Serial.println(mezzoString);    
+      Serial.println(mezzoString);
       
       mezzo.Carb = mezzoString.substring(5);
       mezzo.TARGA = mezzoString.substring(0,5);
@@ -1255,9 +1512,7 @@ void loop() {
       righeDisplay[2] =  "";
       righeDisplay[3] = "***** " + StatoAttuale + " *****";
       
-      displayLCD(righeDisplay,stato_procedura,100);     
-      
-      // stato_procedura++;
+      displayLCD(righeDisplay,stato_procedura,100);
 
       avanzaStato(20);
     }
@@ -1282,7 +1537,7 @@ void loop() {
         Rele_Abilitazione2(1,7); //  apri relè
         Rele_Abilitazione1(1,7); //  apri relè  
         TOGGLE_BIT(PORTA,1);      
-        avanzaStato(30);
+        avanzaStato(10);
       }
       
       /* CONTATTO PISTOLA BENZINA*/
@@ -1294,18 +1549,16 @@ void loop() {
         StatoAttuale = "STOP EROGAZIONE";
         Rele_Abilitazione2(1,7); //  apri relè
         Rele_Abilitazione1(1,7); //  apri relè        
-        avanzaStato(30);
-      } 
-      
-          
+        avanzaStato(10);
+      }     
     }
     break;
     case 7 :
     {       
-        /**************************************
-         Control_WIFI(1);
-      _delay_ms(2000);
-        /**************************************/
+      /**************************************
+       Control_WIFI(1);
+       _delay_ms(2000);
+      /**************************************/
       
       righeDisplay[1] =  "";      
       righeDisplay[2] = "Invio........";
@@ -1321,14 +1574,16 @@ void loop() {
         Messaggio = ""; 
         
         for (int k = 0;k<4;k++)
-          Messaggio.concat(RaccoltaDati[k]+";");
-          
+          Messaggio.concat(RaccoltaDati[k]+";");        
+        
         //Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
         CompletoRifornimentoPerInvioDati(stato_procedura);
         
         if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
         { 
-          SET_BIT(PORTC,PC4);
+          // SET_BIT(PORTC,PC4);
+
+          disable_ETH();
           
           righeDisplay[1] = "";
           righeDisplay[2] = " Dati Inviati ";
@@ -1336,35 +1591,44 @@ void loop() {
           
           displayLCD(righeDisplay,stato_procedura,100);
           
-          _delay_ms(2000);
+          _delay_ms(20);     
+          
           Azzera();
         }
-        else {avanzaStato(3);}  
+        else { stato_procedura++; }        
       }
-      
-      //stato_procedura++;  
     }
     break;
     case 8:
-    {     
-//      righeDisplay[1] =  "";
-//      righeDisplay[2] = "FINE...";
-//      righeDisplay[3] =  "";      
-//      displayLCD(righeDisplay,stato_procedura,100);   
-      
-      /***********************************
-      lcd.clear();
-      lcd.print("ID ATe: " + RaccoltaDati[0]);
-      lcd.setCursor(0,1);
-      lcd.print("TARGA: " + RaccoltaDati[1]);
-      lcd.setCursor(0,2);
-      lcd.print("CARB: " +RaccoltaDati[2]);
-      lcd.setCursor(0,3);
-      lcd.print("Litri: " + RaccoltaDati[3]);
-      _delay_ms(2000);
-      /***********************************/
-      
-      Azzera();
+    { 
+          righeDisplay[1] =  "";
+          righeDisplay[2] = "Salvo Dati........";
+          righeDisplay[3] =  "";  
+          displayLCD(righeDisplay,stato_procedura,10);
+          /*******************************/
+          _delay_ms(5);
+          disable_ETH();
+          Serial.println("ETH Disabilitata");
+          /*******************************/
+          _delay_ms(50);
+          enable_FLASH();
+          Serial.println("FLASH Ablitata");
+          printLine();
+          /******************************/        
+          FlashpowerUp(); 
+          _delay_ms(5); 
+          //FlasheraseSector(addr);
+          //_delay_ms(5);   
+          erogazioniSaver(addr,Messaggio);
+          _delay_ms(5);
+          FlashpowerDown();          
+          printLine();
+          /*****************************/
+          Azzera();
+    }
+    break;
+    case 9:
+    {   
     }
     break;
     case 100:
@@ -1372,8 +1636,7 @@ void loop() {
     }
     break;
     case 101:
-    {
-      
+    {      
     }
     break;
   }
@@ -1450,5 +1713,3 @@ ISR(PCINT3_vect) {
     }
   }               
 }
-
-/******************** FINE INTERRUPT ************************************/
