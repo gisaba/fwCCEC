@@ -86,6 +86,13 @@ struct mezzoType {
   uint8_t KM;
 };
 
+struct Erogazioni {
+	uint16_t n;
+	String e1[30];
+};
+
+Erogazioni salvate;
+
 mezzoType mezzo;
 
 uint8_t success;
@@ -239,7 +246,7 @@ void initIOExpander()
 }
 
 /************************************************************/
-uint32_t addr = 16101;
+uint32_t addr_erog = 16101;
 
 #define TRUE 1
 #define FALSE 0
@@ -288,15 +295,12 @@ void printUniqueID(void) {
 }
 
 void FlasheraseSector(uint32_t _addr) {
-	uint32_t _time /*_addr*/;
-	//_addr = random(0, 0xFFFFF);
+	
 	printTab(3);
 	Serial.print("Erase 4KB");
 	printTab(1);
-	if (flash.eraseSector(_addr)) {
-		_time = flash.functionRunTime();
+	if (flash.eraseSector(_addr)) {	
 		pass(TRUE);
-
 		Serial.print("Flash Diagnostic ");
 		Serial.println("Erase 4KB OK");
 		printTab(1);
@@ -307,70 +311,62 @@ void FlasheraseSector(uint32_t _addr) {
 		pass(FALSE);
 	}
 }
-void erogazioniSaver(uint32_t _addr,String e) {
+void erogazioniSaver(uint32_t _addr,String e,uint8_t _n) {
   
   #define ARRAYSIZE 30
  
+ /*
   struct Erogazioni {
     uint16_t n;
     String e1[ARRAYSIZE];
-  };
+  };*/
   
-  Erogazioni _d;
+   Erogazioni _d;
+  
+  if (_n == 30)
+    _n = 1;
+  else	
+  _d.n = _n;
+  
+  _d.e1[1] = e;  
  
-  _d.n = 30;
-  _d.e1[1] = e; // "000;AABBCCDD;26555;D;;26.30";  
-     
-  uint32_t wTime = 0;
-  uint32_t addr, rTime;
-
-  addr = _addr; //random(0, 0xFFFFF);
+  //addr = _addr; //random(0, 0xFFFFF);
 
  _delay_ms(5); 
- FlasheraseSector(addr);
+ FlasheraseSector(_addr);
  _delay_ms(5);  
 
- if (flash.writeAnything(addr, _d)) {
-   // wTime = flash.functionRunTime();  
+ if (flash.writeAnything(_addr, _d)) 
+ {  
    Serial.println("Scrittura in memoria eseguita");  
    printLine();
-  }
-   
+ }   
 }
 
-void erogazioniRead(uint32_t _addr) {
+Erogazioni erogazioniReader(uint32_t _addr) {
   
   #define ARRAYSIZE 30
- 
-  struct Erogazioni {
-    uint16_t n;
-    String e1[ARRAYSIZE];
-  };
-
   Erogazioni _data;
      
-  addr = _addr; //random(0, 0xFFFFF);
+  //addr_erog = _addr; 
   
   /**********************************************/
-  if (flash.readAnything(addr, _data))
-  {
-  
-  printTab(3);
-  Serial.print ("n° Erogazioni:" );
-  printLine();
-  printTab(2);  
-  Serial.println("0x");
-  Serial.print(_data.n,HEX); 
-  Serial.println("Erogazione 1 : ");
-  Serial.print(_data.e1[1]);
-  pass(TRUE);
-  //return _data.e1[1];
+  if (flash.readAnything(_addr, _data))
+  { 
+	  printTab(3);
+	  Serial.print ("n° Erogazioni:" );
+	  printLine();
+	  printTab(2);  
+	  Serial.println("0x");
+	  Serial.print(_data.n,HEX); 
+	  Serial.println("Erogazione 1 : ");
+	  Serial.print(_data.e1[1]);
+	  pass(TRUE);
+	  return _data;
   }
-
-  pass(FALSE);
-  //return "ERROR";
-  /***********************************************/
-  printLine();
+   pass(FALSE);   
+   printLine();
+   return _data;
 }
 
 void FlashpowerDown() {
@@ -402,22 +398,17 @@ void FlashpowerUp() {
   Serial.print("Power Up");
   printTab(1);
   if (flash.powerUp()) {
- //   _time = flash.functionRunTime();
     pass(TRUE);
- //   printTime(_time, 0);
-  Serial.print("Flash Diagnostic ");
-  Serial.print("Power Up OK");
-  _delay_ms(1000);
-  printTab(1);
-  printLine(); 
+    Serial.print("Power Up OK");
+    _delay_ms(1000);
+	printTab(1);
+	printLine(); 
   }
   else {
     pass(FALSE);
     printTab(2);
   }
 }
-
-
 
 void eraseChipTest() {
   uint32_t _time;
@@ -567,7 +558,7 @@ void setup() {
     Serial.println();   
     eraseChipTest();
     Serial.println();   
-    erogazioniSaver(addr,"Prima");     
+    erogazioniSaver(addr_erog,"Prima",0);     
     FlashpowerDown();
     Serial.println();
   }
@@ -1314,23 +1305,23 @@ void loop() {
     break;
     case 0:
     { 
-      righeDisplay[1] =  "";
+	  righeDisplay[1] =  "";
       righeDisplay[2] =  "";
       righeDisplay[3] =  "";
           
       displayLCD(righeDisplay,stato_procedura,100);
-      _delay_ms(200);
+      _delay_ms(2000);
       alreadyTimbrata = false;  
-      stato_procedura++;
+      // enable_ETH();
+	  stato_procedura++;
     }
     break;
     case 1:
-    {   
+    { 
       righeDisplay[1] = " * AUTENTICAZIONE *";
       righeDisplay[2] = "";
       righeDisplay[3] = "    Avvicina ATE  ";
-     
-      
+	  
       displayLCD(righeDisplay,stato_procedura,100);     
       
       String ATe = "ERRORE";
@@ -1355,14 +1346,14 @@ void loop() {
            righeDisplay[2] = "";
            righeDisplay[3] = "   Rfid: " + ATe;
          
-             displayLCD(righeDisplay,stato_procedura,100);
+           displayLCD(righeDisplay,stato_procedura,100);
            Ethernet.begin(mac, ip, myDns, gateway, subnet);
             // give the WIZ5500 a second to initialize
             _delay_ms(1000);
          }
 
          // Effettua chiamata REST per validare CARD NFC
-         // Se la CARD è valida memorizza in memorria l'operazione e prosegui
+         // Se la CARD è valida memorizza in memoria l'operazione e prosegui
          // Altrimenti Memorizza in Memoria e Azzera la procedura.
       
          stato_procedura++; // da commentare
@@ -1430,7 +1421,6 @@ void loop() {
       mezzo.TARGA = mezzoString.substring(0,5);
       mezzo.KM = 0;
 
-      Serial.println("MEZZO INSERITO : ");
       Serial.println("TIPO CARBURANTE: " + mezzo.Carb);    
       Serial.println("TARGA: " + mezzo.TARGA);              
 
@@ -1619,7 +1609,7 @@ void loop() {
           _delay_ms(5); 
           //FlasheraseSector(addr);
           //_delay_ms(5);   
-          erogazioniSaver(addr,Messaggio);
+          erogazioniSaver(addr_erog,Messaggio,1);
           _delay_ms(5);
           FlashpowerDown();          
           printLine();

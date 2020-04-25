@@ -385,9 +385,9 @@ template <class T> bool SPIFlash::_write(uint32_t _addr, const T& value, uint32_
 //  3. _sz --> Size of the variable in bytes (1 byte = 8 bits)
 //  4. fastRead --> defaults to false - executes _beginFastRead() if set to true
 template <class T> bool SPIFlash::_read(uint32_t _addr, T& value, uint32_t _sz, bool fastRead, uint8_t _dataType) {
-  #ifdef RUNDIAGNOSTIC
+ /* #ifdef RUNDIAGNOSTIC
     _spifuncruntime = micros();
-  #endif
+  #endif*/
   if (!_prep(READDATA, _addr, _sz)) {
     return false;
   }
@@ -418,9 +418,9 @@ template <class T> bool SPIFlash::_read(uint32_t _addr, T& value, uint32_t _sz, 
       _endSPI();
     }
   }
-  #ifdef RUNDIAGNOSTIC
+  /*#ifdef RUNDIAGNOSTIC
     _spifuncruntime = micros() - _spifuncruntime;
-  #endif
+  #endif*/
   return true;
 }
 

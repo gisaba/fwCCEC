@@ -95,12 +95,12 @@
  //Double checks all parameters before calling a read or write. Comes in two variants
  //Takes address and returns the address if true, else returns false. Throws an error if there is a problem.
  bool SPIFlash::_prep(uint8_t opcode, uint32_t _addr, uint32_t size) {
-   // If the flash memory is >= 256 MB enable 4-byte addressing
-   if (_chip.manufacturerID == WINBOND_MANID && _addr >= MB(16)) {
-     if (!_enable4ByteAddressing()) {    // If unable to enable 4-byte addressing
-       return false;
-     }          // TODO: Add SFDP compatibility here
-   }
+    // If the flash memory is >= 256 MB enable 4-byte addressing
+	//    if (_chip.manufacturerID == WINBOND_MANID && _addr >= MB(16)) {
+	//      if (!_enable4ByteAddressing()) {    // If unable to enable 4-byte addressing
+	//        return false;
+	//      }          // TODO: Add SFDP compatibility here
+	//    }
    switch (opcode) {
      case PAGEPROG:
      //Serial.print(F("Address being prepped: "));
@@ -308,9 +308,9 @@
  void SPIFlash::_endSPI(void) {
    CHIP_DESELECT
 
-   if (address4ByteEnabled) {          // If the previous operation enabled 4-byte addressing, disable it
-     _disable4ByteAddressing();
-   }
+//    if (address4ByteEnabled) {          // If the previous operation enabled 4-byte addressing, disable it
+//      _disable4ByteAddressing();
+//    }
 
  #ifdef SPI_HAS_TRANSACTION
    #if defined (ARDUINO_ARCH_SAMD)
