@@ -86,12 +86,10 @@ struct mezzoType {
   uint8_t KM;
 };
 
-struct Erogazioni {
-	uint16_t n;
-	String e1[30];
+struct erogazioni {
+  uint16_t n;
+  String erogazioni[30];
 };
-
-Erogazioni salvate;
 
 mezzoType mezzo;
 
@@ -177,6 +175,7 @@ unsigned long TsgancioPistola = 60;      // 60 secondi
 unsigned long TmaxErogazione = 180;      // 3 minuti
 unsigned long TmaxInviodati = 6;         // 6 Secondi
 unsigned long TmaxProgrammingMode = 15;  // 15 Secondi
+unsigned long TmaxSalvataggio = 15;      // 15 Secondi
 // *********************************
 
 byte key_idx[] = {0,0};
@@ -295,78 +294,60 @@ void printUniqueID(void) {
 }
 
 void FlasheraseSector(uint32_t _addr) {
-	
-	printTab(3);
-	Serial.print("Erase 4KB");
-	printTab(1);
-	if (flash.eraseSector(_addr)) {	
-		pass(TRUE);
-		Serial.print("Flash Diagnostic ");
-		Serial.println("Erase 4KB OK");
-		printTab(1);
-		printLine();
-		_delay_ms(1000);
-	}
-	else {
-		pass(FALSE);
-	}
-}
-void erogazioniSaver(uint32_t _addr,String e,uint8_t _n) {
   
-  #define ARRAYSIZE 30
- 
- /*
-  struct Erogazioni {
-    uint16_t n;
-    String e1[ARRAYSIZE];
-  };*/
-  
-   Erogazioni _d;
-  
-  if (_n == 30)
-    _n = 1;
-  else	
-  _d.n = _n;
-  
-  _d.e1[1] = e;  
- 
-  //addr = _addr; //random(0, 0xFFFFF);
-
- _delay_ms(5); 
- FlasheraseSector(_addr);
- _delay_ms(5);  
-
- if (flash.writeAnything(_addr, _d)) 
- {  
-   Serial.println("Scrittura in memoria eseguita");  
-   printLine();
- }   
-}
-
-Erogazioni erogazioniReader(uint32_t _addr) {
-  
-  #define ARRAYSIZE 30
-  Erogazioni _data;
-     
-  //addr_erog = _addr; 
-  
-  /**********************************************/
-  if (flash.readAnything(_addr, _data))
-  { 
-	  printTab(3);
-	  Serial.print ("n° Erogazioni:" );
-	  printLine();
-	  printTab(2);  
-	  Serial.println("0x");
-	  Serial.print(_data.n,HEX); 
-	  Serial.println("Erogazione 1 : ");
-	  Serial.print(_data.e1[1]);
-	  pass(TRUE);
-	  return _data;
+  printTab(3);
+  Serial.print("Erase 4KB");
+  printTab(1);
+  if (flash.eraseSector(_addr)) { 
+    pass(TRUE);
+    Serial.print("Flash Diagnostic ");
+    Serial.println("Erase 4KB OK");
+    printTab(1);
+    printLine();
+    _delay_ms(1000);
   }
-   pass(FALSE);   
-   printLine();
-   return _data;
+  else {
+    pass(FALSE);
+  }
+}
+
+void erogazioniSaver(uint32_t _addr,String e) 
+{
+  erogazioni _s , _data;
+  
+  if (e == "START")
+  {
+    _s.n = 0;
+    for (int k=0;k<30;k++)
+    {  _delay_ms(5); _s.erogazioni[k] = "X"; }
+  
+  _delay_ms(5);
+  FlasheraseSector(_addr);
+  _delay_ms(5);
+
+  if (flash.writeAnything(_addr, _s))
+  {
+    Serial.println("START OK");
+  }   
+  }
+  else 
+  {
+   bool leggi = flash.readAnything(_addr, _data);
+   
+   if (_data.n == 30) {_data.n = -1;}
+   
+   //_data.n = _data.n + 1;
+   uint8_t ind = _data.n;
+   //_data.erogazioni[ind] = e;
+   _data.erogazioni[0] = e;
+   _delay_ms(5); 
+   FlasheraseSector(_addr);
+   _delay_ms(5);  
+   
+   bool scrivi = flash.writeAnything(_addr, _data);
+
+  // if (scrittura)  Serial.println("Salvataggio Erogazione " + e);   
+  }
 }
 
 void FlashpowerDown() {
@@ -374,10 +355,9 @@ void FlashpowerDown() {
   printTab(3);
   Serial.print("Power Down");
   printTab(1);
+  
   if (flash.powerDown()) {
-    //_time = flash.functionRunTime();
     pass(TRUE);
-  //  printTime(_time, 0);
   
   Serial.print("Flash Diagnostic ");
   Serial.print("Power Down OK");  
@@ -401,8 +381,8 @@ void FlashpowerUp() {
     pass(TRUE);
     Serial.print("Power Up OK");
     _delay_ms(1000);
-	printTab(1);
-	printLine(); 
+  printTab(1);
+  printLine(); 
   }
   else {
     pass(FALSE);
@@ -416,9 +396,8 @@ void eraseChipTest() {
   Serial.print("Erase Chip");
   printTab(1);
   if (flash.eraseChip()) {
-    //_time = flash.functionRunTime();
     pass(TRUE);
-    // printTime(_time, 0);
+ 
   Serial.print("Flash Diagnostic ");
   Serial.print("Erase Chip OK");
   _delay_ms(1000);
@@ -475,21 +454,26 @@ void setup() {
    Serial.println(" inizio Setup ......");
  
   initSS_ETH();
+  _delay_ms(5);
   disable_ETH();
+  _delay_ms(5);
   initSS_FLASH();
+  _delay_ms(5);
   disable_FLASH();
-  _delay_ms(1);
+  _delay_ms(5);
+
+  /*******************************************************************************************/
   
   DDRC |= (1 << RELE1);  // Rele1
   DDRA |= (1 << RELE2);  // Rele2   // set PA7 e PC7 come output 
-
   _delay_ms(10);
   SET_BIT(PORTC,RELE1); // Apri RELE1
   _delay_ms(10);
   SET_BIT(PORTA,RELE2); // Apri RELE2
+  printLine(); 
   
-    
   /***************************LCD******************************/
+  
   lcd.begin(20,4);         // Inizializza display LCD 20x4 e accendi e spegni 2 volte
 
   // ------- 2 blinks -------------
@@ -507,8 +491,11 @@ void setup() {
 
   for (int r=0;r<4;r++)
     righeDisplay[r]="";
-
+  
+   printLine();
+   
   /***************************NFC*************************/ 
+  
   nfc.begin(); // Inizializza Modulo NFC 
   
   _delay_ms(50);
@@ -531,9 +518,8 @@ void setup() {
 
   nfc.setPassiveActivationRetries(0xFF);   
   nfc.SAMConfig();
-
+  printLine();
   /***************************SPY FLASH*************************/  
-
   enable_FLASH();
   
   if (flash.error()) {
@@ -552,28 +538,26 @@ void setup() {
     Serial.print("Function");
     printLine();
     printTab(2);   
-    
     FlashpowerUp();
-    Serial.println();    
     Serial.println();   
     eraseChipTest();
     Serial.println();   
-    erogazioniSaver(addr_erog,"Prima",0);     
+    erogazioniSaver(addr_erog,"START");     
     FlashpowerDown();
     Serial.println();
   }
+  printLine();
   /*************************** RTC ************************/
-  while (!DS3231M.begin()) {                                                  // Initialize RTC communications    //
-    Serial.println(F("Unable to find DS3231MM. Checking again in 3s."));      // Show error text                  //
-    _delay_ms(1000);                                                              // wait a second                    //
+  while (!DS3231M.begin()) {                                                 
+    Serial.println(F("Unable to find DS3231MM. Checking again in 3s."));     
+    _delay_ms(1000);                                                         
   } 
   _delay_ms(50);
 
-  Serial.println(F("DS3231M initialized."));                                  //                                  //
+  Serial.println(F("DS3231M initialized."));                                 
   DS3231M.adjust();
-
+  printLine();
   /*************************** POTENZIOMETRI ************************/
-  Serial.println(" /*************************** POTENZIOMETRI ************************/");
   Serial.println("Inizializzo POTENZIOMETRI per livello pulser.......");
   
   Wire.begin(); // join i2c bus (address optional for master) 
@@ -593,8 +577,9 @@ void setup() {
    Wire.end();
 
    Serial.println("POTENZIOMETRI OK");
-
+   printLine();
   /*************************KEYPAD*********************/
+  printLine();
   Serial.println("/*************************KEYPAD*********************/");
   Serial.println("Inizializzo KEYPAD .......");
  
@@ -603,7 +588,7 @@ void setup() {
   initIOExpander();
   
   _delay_ms(50);
-
+  printLine();
   /**************** SETTING INIZIALI ******************/
       
   stato_procedura = -2; // set stato iniziale
@@ -1282,7 +1267,7 @@ void loop() {
     { //cli(); // disable interrupt      
             
       righeDisplay[1] =  "";
-        righeDisplay[2] = "Setting....";
+      righeDisplay[2] = "Setting....";
       righeDisplay[3] =  "";
       
       displayLCD(righeDisplay,stato_procedura,100);
@@ -1293,7 +1278,7 @@ void loop() {
     break;
     case -1:
     {   
-      righeDisplay[1] =  "";
+    righeDisplay[1] =  "";
       righeDisplay[2] =  "";
       righeDisplay[3] =  "";
       
@@ -1305,7 +1290,7 @@ void loop() {
     break;
     case 0:
     { 
-	  righeDisplay[1] =  "";
+    righeDisplay[1] =  "";
       righeDisplay[2] =  "";
       righeDisplay[3] =  "";
           
@@ -1313,7 +1298,7 @@ void loop() {
       _delay_ms(2000);
       alreadyTimbrata = false;  
       // enable_ETH();
-	  stato_procedura++;
+    stato_procedura++;
     }
     break;
     case 1:
@@ -1321,7 +1306,7 @@ void loop() {
       righeDisplay[1] = " * AUTENTICAZIONE *";
       righeDisplay[2] = "";
       righeDisplay[3] = "    Avvicina ATE  ";
-	  
+    
       displayLCD(righeDisplay,stato_procedura,100);     
       
       String ATe = "ERRORE";
@@ -1464,37 +1449,6 @@ void loop() {
     case 5:
     {             
       // VALIDA MEZZO CON WBSERVICES
-      /*clientREST.stop();
-      clientREST.flush();
-
-      if (GetMezzoValidation(443,serverGAC,clientREST,mezzo.TARGA)) 
-          { 
-            SET_BIT(PORTC,PC4);
-            
-            Buzzer(1,400); 
-            
-            righeDisplay[1] =  "****** ESITO *****";
-            righeDisplay[2] =  "";
-            righeDisplay[3] = "TARGA Riconosciuta";
-            
-            displayLCD(righeDisplay,stato_procedura,100);
-            _delay_ms(1000);
-            
-            avanzaStato(TmaxErogazione); 
-          } 
-         else 
-          { 
-            Buzzer(3,100);
-            
-            righeDisplay[1] =  "****** ESITO *****";
-            righeDisplay[2] =  "";
-            righeDisplay[3] = "TARGA Sconosciuta";
-            
-            displayLCD(righeDisplay,stato_procedura,100);
-            _delay_ms(1000);
-            Azzera();
-           }   
-      */
       
       impulsi = 0;
       
@@ -1526,7 +1480,7 @@ void loop() {
         StatoAttuale = "STOP EROGAZIONE";
         Rele_Abilitazione2(1,7); //  apri relè
         Rele_Abilitazione1(1,7); //  apri relè  
-        TOGGLE_BIT(PORTA,1);      
+        // TOGGLE_BIT(PORTA,1);      
         avanzaStato(10);
       }
       
@@ -1571,8 +1525,7 @@ void loop() {
         
         if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
         { 
-          // SET_BIT(PORTC,PC4);
-
+       
           disable_ETH();
           
           righeDisplay[1] = "";
@@ -1585,7 +1538,10 @@ void loop() {
           
           Azzera();
         }
-        else { stato_procedura++; }        
+        else { 
+           // stato_procedura++;
+           avanzaStato(TmaxSalvataggio);
+          }        
       }
     }
     break;
@@ -1600,21 +1556,19 @@ void loop() {
           disable_ETH();
           Serial.println("ETH Disabilitata");
           /*******************************/
-          _delay_ms(50);
+          _delay_ms(5);
           enable_FLASH();
           Serial.println("FLASH Ablitata");
           printLine();
           /******************************/        
           FlashpowerUp(); 
           _delay_ms(5); 
-          //FlasheraseSector(addr);
-          //_delay_ms(5);   
-          erogazioniSaver(addr_erog,Messaggio,1);
-          _delay_ms(5);
+          //erogazioniSaver(addr_erog,Messaggio);   
+          //_delay_ms(50);
           FlashpowerDown();          
           printLine();
-          /*****************************/
           Azzera();
+          /*****************************/
     }
     break;
     case 9:
