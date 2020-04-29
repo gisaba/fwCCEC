@@ -1,28 +1,3 @@
-/* Arduino SPIMemory Library v.3.4.0
- * Copyright (C) 2019 by Prajwal Bhattaram
- * Created by Prajwal Bhattaram - 19/05/2015
- * Modified by @boseji <salearj@hotmail.com> - 02/03/2017
- * Modified by Prajwal Bhattaram - 03/06/2019
- *
- * This file is part of the Arduino SPIMemory Library. This library is for
- * Flash and FRAM memory modules. In its current form it enables reading,
- * writing and erasing data from and to various locations;
- * suspending and resuming programming/erase and powering down for low power operation.
- *
- * This Library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This Library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License v3.0
- * along with the Arduino SPIMemory Library.  If not, see
- * <http://www.gnu.org/licenses/>.
- */
 
  #include "SPIFlash.h"
 
@@ -95,12 +70,12 @@
  //Double checks all parameters before calling a read or write. Comes in two variants
  //Takes address and returns the address if true, else returns false. Throws an error if there is a problem.
  bool SPIFlash::_prep(uint8_t opcode, uint32_t _addr, uint32_t size) {
-   // If the flash memory is >= 256 MB enable 4-byte addressing
-   if (_chip.manufacturerID == WINBOND_MANID && _addr >= MB(16)) {
-     if (!_enable4ByteAddressing()) {    // If unable to enable 4-byte addressing
-       return false;
-     }          // TODO: Add SFDP compatibility here
-   }
+    // If the flash memory is >= 256 MB enable 4-byte addressing
+	//    if (_chip.manufacturerID == WINBOND_MANID && _addr >= MB(16)) {
+	//      if (!_enable4ByteAddressing()) {    // If unable to enable 4-byte addressing
+	//        return false;
+	//      }          // TODO: Add SFDP compatibility here
+	//    }
    switch (opcode) {
      case PAGEPROG:
      //Serial.print(F("Address being prepped: "));
@@ -308,9 +283,9 @@
  void SPIFlash::_endSPI(void) {
    CHIP_DESELECT
 
-   if (address4ByteEnabled) {          // If the previous operation enabled 4-byte addressing, disable it
-     _disable4ByteAddressing();
-   }
+//    if (address4ByteEnabled) {          // If the previous operation enabled 4-byte addressing, disable it
+//      _disable4ByteAddressing();
+//    }
 
  #ifdef SPI_HAS_TRANSACTION
    #if defined (ARDUINO_ARCH_SAMD)

@@ -1,32 +1,7 @@
-/* Arduino SPIMemory Library v.3.4.0
- * Copyright (C) 2019 by Prajwal Bhattaram
- * Created by Prajwal Bhattaram - 19/05/2015
- * Modified by Prajwal Bhattaram - 03/06/2019
- *
- * This file is part of the Arduino SPIMemory Library. This library is for
- * Flash and FRAM memory modules. In its current form it enables reading,
- * writing and erasing data from and to various locations;
- * suspending and resuming programming/erase and powering down for low power operation.
- *
- * This Library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This Library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License v3.0
- * along with the Arduino SPIMemory Library.  If not, see
- * <http://www.gnu.org/licenses/>.
- */
 
-   #define CHIP_SELECT   {PORTB &= ~(1 << PB4);}
-   #define CHIP_DESELECT {PORTB |= (1 << PB4);}
-   //#define CHIP_SELECT   digitalWrite(csPin, LOW);
-   //#define CHIP_DESELECT digitalWrite(csPin, HIGH);
+   #define CHIP_SELECT   {PORTB &= ~(1 << PB4);} //#define CHIP_SELECT   digitalWrite(csPin, LOW);
+   #define CHIP_DESELECT {PORTB |= (1 << PB4);}  //#define CHIP_DESELECT digitalWrite(csPin, HIGH);
+   
    #define xfer(n)   SPI.transfer(n)
    #define BEGIN_SPI SPI.begin();
 
@@ -226,11 +201,6 @@
   #define _CHARARRAY_         0x0A
   #define _STRUCT_            0x0B
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-//                        Bit shift macros                            //
-//                      Thanks to @VitorBoss                          //
-//          https://github.com/Marzogh/SPIMemory/issues/76             //
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
 #define Lo(param) ((char *)&param)[0] //0x000y
 #define Hi(param) ((char *)&param)[1] //0x00y0
 #define Higher(param) ((char *)&param)[2] //0x0y00
