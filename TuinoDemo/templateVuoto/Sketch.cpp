@@ -173,7 +173,7 @@ unsigned long TinputTarga = 30;          // 30 Secondi
 unsigned long TselDistributore = 30;     // 30 Secondi
 unsigned long TsgancioPistola = 60;      // 60 secondi
 unsigned long TmaxErogazione = 180;      // 3 minuti
-unsigned long TmaxInviodati = 6;         // 6 Secondi
+unsigned long TmaxInviodati = 10;        // 10 Secondi
 unsigned long TmaxProgrammingMode = 15;  // 15 Secondi
 unsigned long TmaxSalvataggio = 15;      // 15 Secondi
 // *********************************
@@ -300,7 +300,6 @@ void FlasheraseSector(uint32_t _addr) {
   printTab(1);
   if (flash.eraseSector(_addr)) { 
     pass(TRUE);
-    Serial.print("Flash Diagnostic ");
     Serial.println("Erase 4KB OK");
     printTab(1);
     printLine();
@@ -311,43 +310,49 @@ void FlasheraseSector(uint32_t _addr) {
   }
 }
 
-void erogazioniSaver(uint32_t _addr,String e) 
-{
-  erogazioni _s , _data;
+void erogazioniSaver(uint32_t _addr,String e) {
   
-  if (e == "START")
-  {
-    _s.n = 0;
-    for (int k=0;k<30;k++)
-    {  _delay_ms(5); _s.erogazioni[k] = "X"; }
+  uint32_t addr;
+  addr = _addr; 
+  
+  /*#define ARRAYSIZE 30
+  
+  struct Erogazioni {
+    uint16_t n;
+    String e1[ARRAYSIZE];
+  };
+  
+  Erogazioni _d;
+  _d.n = 1;
+  _d.e1[1] = e; 
   
   _delay_ms(5);
-  FlasheraseSector(_addr);
+  FlasheraseSector(addr);
   _delay_ms(5);
-
-  if (flash.writeAnything(_addr, _s))
-  {
-    Serial.println("START OK");
-  }   
+  if (flash.writeAnything(addr, _d)) {
+    Serial.println("Scrittura in memoria eseguita");
+    printLine();
+  }*/
+  
+  String salvata;
+  
+  if (e != "START")
+  {   
+    flash.readStr(addr_erog,salvata);
+    salvata.concat("NEW;");
+    salvata.concat(e);
+    _delay_ms(5);
   }
-  else 
-  {
-   bool leggi = flash.readAnything(_addr, _data);
-   
-   if (_data.n == 30) {_data.n = -1;}
-   
-   //_data.n = _data.n + 1;
-   uint8_t ind = _data.n;
-   //_data.erogazioni[ind] = e;
-   _data.erogazioni[0] = e;
-   _delay_ms(5); 
-   FlasheraseSector(_addr);
-   _delay_ms(5);  
-   
-   bool scrivi = flash.writeAnything(_addr, _data);
-
-  // if (scrittura)  Serial.println("Salvataggio Erogazione " + e);   
-  }
+  else
+  { salvata = e; }
+  
+  FlasheraseSector(addr);
+  _delay_ms(5);
+  if (flash.writeStr(addr, salvata)) {
+    Serial.print("Scrittura eseguita: ");
+    Serial.println(salvata);
+    printLine();
+  } 
 }
 
 void FlashpowerDown() {
@@ -356,19 +361,17 @@ void FlashpowerDown() {
   Serial.print("Power Down");
   printTab(1);
   
-  if (flash.powerDown()) {
+  if (flash.powerDown()) 
+  {
     pass(TRUE);
-  
-  Serial.print("Flash Diagnostic ");
-  Serial.print("Power Down OK");  
-  _delay_ms(1000);
-  printTab(1);
-  printLine();  
+    Serial.print("Power Down OK");  
+    _delay_ms(1000);
+    printTab(1);
+    printLine();  
   }
   else {
     pass(FALSE);
-    printTab(2);
-    Serial.print("Not all chips support power down. Check your datasheet.");
+    printTab(2);   
   }
 }
 
@@ -397,8 +400,6 @@ void eraseChipTest() {
   printTab(1);
   if (flash.eraseChip()) {
     pass(TRUE);
- 
-  Serial.print("Flash Diagnostic ");
   Serial.print("Erase Chip OK");
   _delay_ms(1000);
   printTab(1);
@@ -413,8 +414,7 @@ bool getID() {
   Serial.println();
   uint32_t JEDEC = flash.getJEDECID();
   if (!JEDEC) {
-    Serial.println("No comms. Check wiring. Is chip supported? If unable to fix, raise an issue on Github");
-    return false;
+   return false;
   }
   else {
     Serial.print("JEDEC ID: 0x");
@@ -441,7 +441,7 @@ bool getID() {
   lcd.setCursor(0,3);
   lcd.print("Max Pages: ");
   lcd.print(flash.getMaxPage());
-  _delay_ms(3000);
+  _delay_ms(1000);
   }
   return true;
 }
@@ -450,18 +450,20 @@ bool getID() {
 
 void setup() {
 
+   initSS_ETH();
+   _delay_ms(5);
+   disable_ETH();
+   _delay_ms(5);
+   initSS_FLASH();
+   _delay_ms(5);
+   disable_FLASH();
+   _delay_ms(5);
+
+
    //Serial.begin(9600);
    Serial.println(" inizio Setup ......");
  
-  initSS_ETH();
-  _delay_ms(5);
-  disable_ETH();
-  _delay_ms(5);
-  initSS_FLASH();
-  _delay_ms(5);
-  disable_FLASH();
-  _delay_ms(5);
-
+ 
   /*******************************************************************************************/
   
   DDRC |= (1 << RELE1);  // Rele1
@@ -1277,8 +1279,23 @@ void loop() {
     }
     break;
     case -1:
-    {   
-    righeDisplay[1] =  "";
+    { 
+    /***************************************************/
+    disable_ETH();
+    _delay_ms(2);
+    FlashpowerUp();
+    _delay_ms(5);
+    String a;
+    flash.readStr(addr_erog,a);
+    _delay_ms(5);
+    Serial.print("NON INVIATE : ");
+    Serial.println(a);
+    _delay_ms(5);
+    FlashpowerDown();
+    _delay_ms(5);
+    disable_FLASH();
+    /***************************************************/  
+      righeDisplay[1] =  "";
       righeDisplay[2] =  "";
       righeDisplay[3] =  "";
       
@@ -1290,15 +1307,16 @@ void loop() {
     break;
     case 0:
     { 
-    righeDisplay[1] =  "";
+      righeDisplay[1] =  "";
       righeDisplay[2] =  "";
       righeDisplay[3] =  "";
           
       displayLCD(righeDisplay,stato_procedura,100);
       _delay_ms(2000);
       alreadyTimbrata = false;  
-      // enable_ETH();
-    stato_procedura++;
+      enable_ETH();
+	  disable_FLASH();
+	  stato_procedura++;
     }
     break;
     case 1:
@@ -1480,7 +1498,7 @@ void loop() {
         StatoAttuale = "STOP EROGAZIONE";
         Rele_Abilitazione2(1,7); //  apri relè
         Rele_Abilitazione1(1,7); //  apri relè  
-        // TOGGLE_BIT(PORTA,1);      
+        TOGGLE_BIT(PORTA,1);      
         avanzaStato(10);
       }
       
@@ -1493,7 +1511,7 @@ void loop() {
         StatoAttuale = "STOP EROGAZIONE";
         Rele_Abilitazione2(1,7); //  apri relè
         Rele_Abilitazione1(1,7); //  apri relè        
-        avanzaStato(10);
+        avanzaStato(TmaxInviodati);
       }     
     }
     break;
@@ -1521,7 +1539,7 @@ void loop() {
           Messaggio.concat(RaccoltaDati[k]+";");        
         
         //Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
-        CompletoRifornimentoPerInvioDati(stato_procedura);
+        //CompletoRifornimentoPerInvioDati(stato_procedura);
         
         if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
         { 
@@ -1563,8 +1581,8 @@ void loop() {
           /******************************/        
           FlashpowerUp(); 
           _delay_ms(5); 
-          //erogazioniSaver(addr_erog,Messaggio);   
-          //_delay_ms(50);
+          erogazioniSaver(addr_erog,Messaggio);   
+          _delay_ms(5);
           FlashpowerDown();          
           printLine();
           Azzera();
