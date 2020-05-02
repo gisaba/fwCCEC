@@ -250,6 +250,14 @@ uint32_t addr_erog = 16101;
 #define TRUE 1
 #define FALSE 0
 
+void my_delay_ms(int ms)
+{
+  while (0 < ms)
+  {
+    _delay_ms(1);
+    --ms;
+  }
+}
 
 void printLine() {
   Serial.println();
@@ -293,7 +301,7 @@ void printUniqueID(void) {
    printLine();
 }
 
-void FlasheraseSector(uint32_t _addr) {
+void FlasheraseSector(uint32_t _addr, uint16_t del) {
   
   printTab(3);
   Serial.print("Erase 4KB");
@@ -303,7 +311,8 @@ void FlasheraseSector(uint32_t _addr) {
     Serial.println("Erase 4KB OK");
     printTab(1);
     printLine();
-    _delay_ms(1000);
+    //_delay_ms(300);
+    my_delay_ms(del);
   }
   else {
     pass(FALSE);
@@ -346,7 +355,8 @@ void erogazioniSaver(uint32_t _addr,String e) {
   else
   { salvata = e; }
   
-  FlasheraseSector(addr);
+  FlasheraseSector(addr,500);
+  
   _delay_ms(5);
   if (flash.writeStr(addr, salvata)) {
     Serial.print("Scrittura eseguita: ");
@@ -355,7 +365,7 @@ void erogazioniSaver(uint32_t _addr,String e) {
   } 
 }
 
-void FlashpowerDown() {
+void FlashpowerDown(uint16_t _del) {
   uint32_t _time;
   printTab(3);
   Serial.print("Power Down");
@@ -365,7 +375,8 @@ void FlashpowerDown() {
   {
     pass(TRUE);
     Serial.print("Power Down OK");  
-    _delay_ms(1000);
+    //_delay_ms(200);
+  my_delay_ms(_del);
     printTab(1);
     printLine();  
   }
@@ -375,7 +386,7 @@ void FlashpowerDown() {
   }
 }
 
-void FlashpowerUp() {
+void FlashpowerUp(uint16_t _del) {
   uint32_t _time;
   printTab(3);
   Serial.print("Power Up");
@@ -383,7 +394,7 @@ void FlashpowerUp() {
   if (flash.powerUp()) {
     pass(TRUE);
     Serial.print("Power Up OK");
-    _delay_ms(1000);
+    my_delay_ms(_del);
   printTab(1);
   printLine(); 
   }
@@ -393,7 +404,7 @@ void FlashpowerUp() {
   }
 }
 
-void eraseChipTest() {
+void eraseChipTest(uint16_t _del) {
   uint32_t _time;
   printTab(3);
   Serial.print("Erase Chip");
@@ -401,7 +412,7 @@ void eraseChipTest() {
   if (flash.eraseChip()) {
     pass(TRUE);
   Serial.print("Erase Chip OK");
-  _delay_ms(1000);
+  my_delay_ms(_del);
   printTab(1);
   printLine(); 
   }
@@ -460,7 +471,7 @@ void setup() {
    _delay_ms(5);
 
 
-   //Serial.begin(9600);
+   // Serial.begin(9600);
    Serial.println(" inizio Setup ......");
  
  
@@ -531,21 +542,17 @@ void setup() {
   flash.begin();
 
   if (getID()) {
-
-    printLine();
-    printTab(7);
-    Serial.print("Testing library code");
     printLine();
     printTab(3);
     Serial.print("Function");
     printLine();
     printTab(2);   
-    FlashpowerUp();
+    FlashpowerUp(100);
     Serial.println();   
-    eraseChipTest();
+    eraseChipTest(100);
     Serial.println();   
     erogazioniSaver(addr_erog,"START");     
-    FlashpowerDown();
+    FlashpowerDown(200);
     Serial.println();
   }
   printLine();
@@ -601,30 +608,20 @@ void setup() {
 
 /********************************END SETUP ***************************************/
 
-void my_delay_ms(int ms)
-{
-  while (0 < ms)
-  {
-    _delay_ms(1);
-    --ms;
-  }
-}
+
 
 void Buzzer(uint8_t p_ripeti,uint32_t p_delay_suono) {
   
   uint32_t del = p_delay_suono;
-  
+  /*
   for(int volte = 0;volte<p_ripeti;volte++)
   {
     DDRC |= (1 << PC6);     // set PC6 for output
     TOGGLE_BIT(PORTC,PC6);
     my_delay_ms(p_delay_suono);
-    TOGGLE_BIT(PORTC,PC6);
-    /*my_delay_ms(p_delay_suono);
-    TOGGLE_BIT(PORTC,PC6);
-    my_delay_ms(p_delay_suono);
-    TOGGLE_BIT(PORTC,PC6);*/
+    TOGGLE_BIT(PORTC,PC6);    
   }
+  */
 }
 
 /************************************KEYPAD***************************/
@@ -1279,30 +1276,12 @@ void loop() {
     }
     break;
     case -1:
-    { 
-    /***************************************************/
-    disable_ETH();
-    _delay_ms(2);
-    FlashpowerUp();
-    _delay_ms(5);
-    String a;
-    flash.readStr(addr_erog,a);
-    _delay_ms(5);
-    Serial.print("NON INVIATE : ");
-    Serial.println(a);
-    _delay_ms(5);
-    FlashpowerDown();
-    _delay_ms(5);
-    disable_FLASH();
-    /***************************************************/  
-      righeDisplay[1] =  "";
-      righeDisplay[2] =  "";
-      righeDisplay[3] =  "";
-      
-      abilitaPulsanti();
-      _delay_ms(20);
-      abilitaContattiPistola();
-      stato_procedura++;
+    {             
+    abilitaPulsanti();
+    _delay_ms(20);
+    abilitaContattiPistola();
+    
+    stato_procedura++;
     }
     break;
     case 0:
@@ -1315,8 +1294,8 @@ void loop() {
       _delay_ms(2000);
       alreadyTimbrata = false;  
       enable_ETH();
-	  disable_FLASH();
-	  stato_procedura++;
+    disable_FLASH();
+    stato_procedura++;
     }
     break;
     case 1:
@@ -1539,7 +1518,7 @@ void loop() {
           Messaggio.concat(RaccoltaDati[k]+";");        
         
         //Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
-        //CompletoRifornimentoPerInvioDati(stato_procedura);
+        CompletoRifornimentoPerInvioDati(stato_procedura);
         
         if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
         { 
@@ -1556,10 +1535,7 @@ void loop() {
           
           Azzera();
         }
-        else { 
-           // stato_procedura++;
-           avanzaStato(TmaxSalvataggio);
-          }        
+        else { avanzaStato(TmaxSalvataggio); }        
       }
     }
     break;
@@ -1567,30 +1543,44 @@ void loop() {
     { 
           righeDisplay[1] =  "";
           righeDisplay[2] = "Salvo Dati........";
-          righeDisplay[3] =  "";  
+          righeDisplay[3] =  "";
           displayLCD(righeDisplay,stato_procedura,10);
-          /*******************************/
-          _delay_ms(5);
+           _delay_ms(5);
           disable_ETH();
-          Serial.println("ETH Disabilitata");
-          /*******************************/
+          Serial.println("ETH SS Disable");
           _delay_ms(5);
           enable_FLASH();
-          Serial.println("FLASH Ablitata");
+          Serial.println("FLASH SS Enable");
           printLine();
-          /******************************/        
-          FlashpowerUp(); 
+          FlashpowerUp(100); 
           _delay_ms(5); 
           erogazioniSaver(addr_erog,Messaggio);   
           _delay_ms(5);
-          FlashpowerDown();          
           printLine();
-          Azzera();
-          /*****************************/
+		  righeDisplay[1] =  "";
+		  righeDisplay[2] = "Dati Salvati..";
+		  righeDisplay[3] =  "";
+		  displayLCD(righeDisplay,stato_procedura,10);
+		  _delay_ms(1000); 
+		  avanzaStato(TmaxSalvataggio);       
     }
     break;
     case 9:
     {   
+		  /***************************************/
+			disable_ETH();
+			_delay_ms(5);
+			String a;
+			flash.readStr(addr_erog,a);
+			_delay_ms(5);
+			Serial.print("NON INVIATE : ");
+			Serial.println(a);
+			_delay_ms(5);
+			FlashpowerDown(100);
+			_delay_ms(5);
+			disable_FLASH();  
+			Azzera();
+			/***************************************/
     }
     break;
     case 100:
