@@ -148,7 +148,9 @@ IPAddress subnet(255, 255, 0, 0); // SUBNET
 
 char serverATE[] = "wbpate-test.dipvvf.it";
 char serverGAC[] = "gacweb-test.dipvvf.it";
+char serverREST[] = "dell_barbato.sa.dipvvf.it";
 
+EthernetClient clientRESTlocal;
 EthernetClient clientREST;
 
 byte mac[] = {0x00, 0x0E, 0x0C, 0xB0, 0x25, 0x6F};
@@ -471,7 +473,7 @@ void setup() {
    _delay_ms(5);
 
 
-   // Serial.begin(9600);
+   //Serial.begin(9600);
    Serial.println(" inizio Setup ......");
  
  
@@ -1015,6 +1017,69 @@ uint8_t GetAteValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,Str
   return valida;
 }
 
+
+bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String _erogazione)
+{
+ bool valida = false;
+
+ if ( (ClientHTTP.connect(serverREST, Port)))  
+  {        
+		// _delay_ms(100);
+    
+        strURLAPI = "POST /api/erogazioni/ HTTP/1.1\r\n";
+        //strURLAPI += "Host: totemino.sa.dipvvf.it:5000";
+        strURLAPI += "Host: 192.168.18.13:5001";
+        strURLAPI += "\r\n";
+        strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
+        strURLAPI += "\r\n";
+        strURLAPI += "content-type: application/json";
+        strURLAPI += "\r\n";
+        strURLAPI += "Accept: */*";
+        strURLAPI += "\r\n";
+        strURLAPI += "Content-Length: 43";
+        strURLAPI += "\r\n";
+        strURLAPI += "\r\n";
+        strURLAPI += "{\r\n";        
+        strURLAPI += "\"erogazione\":\""+_erogazione+"\"\r\n";
+        strURLAPI += "}\r\n";
+
+    Serial.println(strURLAPI);
+    
+    ClientHTTP.print(strURLAPI);
+  
+    _delay_ms(80);
+    ClientHTTP.println("Connection: close");
+    ClientHTTP.println();
+  }
+  else
+  {
+    lcd.clear();
+    lcd.setCursor(0,1);
+    lcd.print("Connessione Fallita.");
+    lcd.setCursor(0,3);
+    lcd.print("Verificare....");
+    _delay_ms(1000);
+  }
+
+  _delay_ms(100);
+
+  while (ClientHTTP.available()) {
+    char c = ClientHTTP.read();
+    RispostaHTTP = RispostaHTTP + c;
+    if (RispostaHTTP.length() == HTTP_len_response)
+    {
+      String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
+      _delay_ms(80);      
+    
+      if (rispostaGetTimbrature == "200"){ valida = true; }
+      _delay_ms(80);
+    }
+  }
+  _delay_ms(50);
+  
+  return valida;
+}
+
 uint8_t GetMezzoValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,String P_Targa)
 {
  int valida = 0;
@@ -1329,7 +1394,8 @@ void loop() {
            righeDisplay[3] = "   Rfid: " + ATe;
          
            displayLCD(righeDisplay,stato_procedura,100);
-           Ethernet.begin(mac, ip, myDns, gateway, subnet);
+           //Ethernet.begin(mac, ip, myDns, gateway, subnet);
+		   InizializzaEthernet();
             // give the WIZ5500 a second to initialize
             _delay_ms(1000);
          }
@@ -1338,9 +1404,9 @@ void loop() {
          // Se la CARD è valida memorizza in memoria l'operazione e prosegui
          // Altrimenti Memorizza in Memoria e Azzera la procedura.
       
-         stato_procedura++; // da commentare
+        // stato_procedura++; // da commentare
          
-         /****************************************************
+         /****************************************************/
          if (GetAteValidation(80,serverATE,clientREST,ATe)) 
           { 
             SET_BIT(PORTC,PC4);
@@ -1368,7 +1434,7 @@ void loop() {
             _delay_ms(1000);
             Azzera();
            }   
-          *****************************************************/
+          /*****************************************************/
     }
     break;
     case 2:
@@ -1460,6 +1526,10 @@ void loop() {
     break;
     case 6:
     { 
+	  disable_ETH();
+	  _delay_ms(2);
+	  enable_ETH();
+		
       double lt = impulsiToLitri(impulsi);      
       
       righeDisplay[1] = "LITRI :" + String(lt);
@@ -1508,15 +1578,37 @@ void loop() {
       if (BIT_IS_CLEAR(PORTC,4)) 
       {
         displayLCD(righeDisplay,stato_procedura,10);  
-        InizializzaEthernet();
-        _delay_ms(1000);
-        //Control_WIFI(0);
+        // InizializzaEthernet();
+        // _delay_ms(1000);
+        // Control_WIFI(0);
         
         Messaggio = ""; 
         
         for (int k = 0;k<4;k++)
-          Messaggio.concat(RaccoltaDati[k]+";");        
+          Messaggio.concat(RaccoltaDati[k]+";");  
+      
+    _delay_ms(1000);      
         
+    if (PostErogazione(5001,serverREST,clientRESTlocal,Messaggio))
+    {
+      disable_ETH();
+    
+      righeDisplay[1] = "";
+      righeDisplay[2] = " Dati Inviati ";
+      righeDisplay[3] =  "";
+    
+      displayLCD(righeDisplay,stato_procedura,100);
+    
+      _delay_ms(20);
+        
+	  // Azzera();
+    }
+    // else { avanzaStato(TmaxSalvataggio); }
+    
+	disable_ETH();
+	avanzaStato(TmaxSalvataggio);
+	 
+    /***********************************************************
         //Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
         CompletoRifornimentoPerInvioDati(stato_procedura);
         
@@ -1536,11 +1628,13 @@ void loop() {
           Azzera();
         }
         else { avanzaStato(TmaxSalvataggio); }        
+      **********************************************************/
       }
     }
     break;
     case 8:
     { 
+		/*
           righeDisplay[1] =  "";
           righeDisplay[2] = "Salvo Dati........";
           righeDisplay[3] =  "";
@@ -1557,30 +1651,31 @@ void loop() {
           erogazioniSaver(addr_erog,Messaggio);   
           _delay_ms(5);
           printLine();
-		  righeDisplay[1] =  "";
-		  righeDisplay[2] = "Dati Salvati..";
-		  righeDisplay[3] =  "";
-		  displayLCD(righeDisplay,stato_procedura,10);
-		  _delay_ms(1000); 
-		  avanzaStato(TmaxSalvataggio);       
+	      righeDisplay[1] =  "";
+          righeDisplay[2] = "Dati Salvati..";
+          righeDisplay[3] =  "";
+          displayLCD(righeDisplay,stato_procedura,10);
+          _delay_ms(1000); 
+          avanzaStato(TmaxSalvataggio);    
+		*/   
     }
     break;
     case 9:
     {   
-		  /***************************************/
-			disable_ETH();
-			_delay_ms(5);
-			String a;
-			flash.readStr(addr_erog,a);
-			_delay_ms(5);
-			Serial.print("NON INVIATE : ");
-			Serial.println(a);
-			_delay_ms(5);
-			FlashpowerDown(100);
-			_delay_ms(5);
-			disable_FLASH();  
-			Azzera();
-			/***************************************/
+      /***************************************/
+      disable_ETH();
+      _delay_ms(5);
+      String a;
+      flash.readStr(addr_erog,a);
+      _delay_ms(5);
+      Serial.print("NON INVIATE : ");
+      Serial.println(a);
+      _delay_ms(5);
+      FlashpowerDown(100);
+      _delay_ms(5);
+      disable_FLASH();  
+      Azzera();
+      /***************************************/
     }
     break;
     case 100:

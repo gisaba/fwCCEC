@@ -313,8 +313,7 @@ ADDITIONAL_DEPENDENCIES:=
 
 OUTPUT_FILE_DEP:= ./makedep.mk
 
-LIB_DEP+=  \
-C:/Users/Administrator/Documents/ProgettiVVF/FuelControl/Firmware/repo/fwCCEC/TuinoDemo/ArduinoCore/Debug/libArduinoCore.a
+LIB_DEP+= 
 
 LINKER_SCRIPT_DEP+= 
 
