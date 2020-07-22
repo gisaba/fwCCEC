@@ -1,40 +1,10 @@
-/**************************************************************************/
-/*! 
-    @file     Adafruit_PN532.h
-    @author   Adafruit Industries
-	@license  BSD (see license.txt)
-	
-
-	This is a library for the Adafruit PN532 NFC/RFID breakout boards
-	This library works with the Adafruit NFC breakout 
-	----> https://www.adafruit.com/products/364
-	
-	Check out the links above for our tutorials and wiring diagrams 
-  These chips use SPI or I2C to communicate.
-	
-	Adafruit invests time and resources providing this open source code, 
-	please support Adafruit and open-source hardware by purchasing 
-	products from Adafruit!
-
-	@section  HISTORY
-
-  v2.0  - Refactored to add I2C support from Adafruit_NFCShield_I2C library.
-
-	v1.1  - Added full command list
-          - Added 'verbose' mode flag to constructor to toggle debug output
-          - Changed readPassiveTargetID() to return variable length values
-	
-*/
-/**************************************************************************/
 
 #ifndef ADAFRUIT_PN532_H
 #define ADAFRUIT_PN532_H
 
-#if ARDUINO >= 100
  #include "Arduino.h"
-#else
- #include "WProgram.h"
-#endif
+// #include "WProgram.h"
+
 
 #define PN532_PREAMBLE                      (0x00)
 #define PN532_STARTCODE1                    (0x00)
@@ -153,11 +123,10 @@
 #define PN532_GPIO_P34                      (4)
 #define PN532_GPIO_P35                      (5)
 
-class Adafruit_PN532{
+class NFC_PN532{
  public:
-  Adafruit_PN532(uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t ss);  // Software SPI
-  Adafruit_PN532(uint8_t irq, uint8_t reset);  // Hardware I2C
-  Adafruit_PN532(uint8_t ss);  // Hardware SPI
+  NFC_PN532(uint8_t irq, uint8_t reset);  // Hardware I2C
+
   void begin(void);
   
   // Generic PN532 functions
@@ -212,10 +181,6 @@ class Adafruit_PN532{
   bool isready();
   bool waitready(uint16_t timeout);
   bool readack();
-
-  // SPI-specific functions.
-  void    spi_write(uint8_t c);
-  uint8_t spi_read(void);
 
   // Note there are i2c_read and i2c_write inline functions defined in the .cpp file.
 };
