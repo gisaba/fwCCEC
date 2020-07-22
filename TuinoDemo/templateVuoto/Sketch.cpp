@@ -12,7 +12,7 @@
 #include <Ethernet2.h>
 #include <Keypad.h>
 #include <Wire.h>
-#include <Adafruit_PN532.h>
+#include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
 #include <SPIMemory.h>
@@ -101,7 +101,7 @@ boolean alreadyTimbrata = false;
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 uint8_t Clessidra[8] = {0x1F, 0x11, 0x0A, 0x04, 0x04, 0x0E, 0x1F, 0x1F,}; 
-Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
+NFC_PN532 nfc(PN532_IRQ, PN532_RESET);
 
 String StatoAttuale ="START...";
 String strURLAPI = "";
@@ -140,8 +140,11 @@ char MessaggioToServer[100] = "";
 /********************************************************************************************/
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
-IPAddress servizio(192, 168, 5, 9);    // IP Macchina dove risiede il servizio TCP
-byte ip[] = { 192, 168, 0, 50 };
+// IPAddress servizio(192, 168, 5, 9);    // IP Macchina dove risiede il servizio TCP
+
+//byte ipCCEC[] = { 192, 168, 0, 50 };
+	
+IPAddress ipCCEC(192, 168, 0, 50);
 IPAddress myDns(192,168,1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
 IPAddress subnet(255, 255, 0, 0); // SUBNET
@@ -150,11 +153,12 @@ char serverATE[] = "wbpate-test.dipvvf.it";
 char serverGAC[] = "gacweb-test.dipvvf.it";
 char serverREST[] = "dell_barbato.sa.dipvvf.it";
 
-EthernetClient clientRESTlocal;
-EthernetClient clientREST;
+EthernetClient clientLOCAL;
+EthernetClient clientATE;
 
 byte mac[] = {0x00, 0x0E, 0x0C, 0xB0, 0x25, 0x6F};
 
+/********************************************************************************************
 EthernetClient  clientToServizio; // Client Verso Servizio
 EthernetServer  server(31001);    // Instanza Server CCEC
 EthernetClient client;
@@ -163,7 +167,7 @@ EthernetClient client;
 DS3231M_Class DS3231M;  
 const uint8_t SPRINTF_BUFFER_SIZE =     32;  
 char          inputBuffer[SPRINTF_BUFFER_SIZE];  
-unsigned long secs;                                                        // store the seconds value          //
+unsigned long secs;                            // store the seconds value
 unsigned long UltimoPassaggioStato = 0;        // Timer Stati Procedura
 unsigned long Timer = 0;                       // Timer
 DateTime nowTimer;
@@ -201,8 +205,10 @@ char MappaKeys[ROWS][COLS] = { // Tastierino Definitivo
 void InizializzaEthernet()
 {
   /*****************************/
-  // inizializzo ethernet shield
-  Ethernet.begin(mac, ip, myDns, gateway, subnet);
+  // inizializzo ethernet MICRO W5500
+  Ethernet.begin(mac, ipCCEC, myDns, gateway, subnet);
+  
+  /******************************
   // Ascolto presenza client
   server.begin();
   if (clientToServizio.connect(servizio, 11001)) {
@@ -303,8 +309,7 @@ void printUniqueID(void) {
    printLine();
 }
 
-void FlasheraseSector(uint32_t _addr, uint16_t del) {
-  
+void FlasheraseSector(uint32_t _addr, uint16_t del) {  
   printTab(3);
   Serial.print("Erase 4KB");
   printTab(1);
@@ -321,8 +326,7 @@ void FlasheraseSector(uint32_t _addr, uint16_t del) {
   }
 }
 
-void erogazioniSaver(uint32_t _addr,String e) {
-  
+void erogazioniSaver(uint32_t _addr,String e) {  
   uint32_t addr;
   addr = _addr; 
   
@@ -478,7 +482,7 @@ void setup() {
  
  
   /*******************************************************************************************/
-  
+  DDRC |= (1 << BUZZER); // set BUZZER (PC6) for output
   DDRC |= (1 << RELE1);  // Rele1
   DDRA |= (1 << RELE2);  // Rele2   // set PA7 e PC7 come output 
   _delay_ms(10);
@@ -592,38 +596,28 @@ void setup() {
   /*************************KEYPAD*********************/
   printLine();
   Serial.println("/*************************KEYPAD*********************/");
-  Serial.println("Inizializzo KEYPAD .......");
- 
-  _delay_ms(50);
-  
-  initIOExpander();
-  
-  _delay_ms(50);
+  _delay_ms(50);  
+  initIOExpander();  
   printLine();
-  /**************** SETTING INIZIALI ******************/
-      
+  /**************** SETTING INIZIALI ******************/      
   stato_procedura = -2; // set stato iniziale
   StatoAttuale = "Starting ...."; 
-
-  Serial.println(StatoAttuale);
+  Serial.println("Stato Iniziale" + StatoAttuale);
+  printLine();
 }
 
 /********************************END SETUP ***************************************/
 
-
-
 void Buzzer(uint8_t p_ripeti,uint32_t p_delay_suono) {
   
   uint32_t del = p_delay_suono;
-  /*
+  
   for(int volte = 0;volte<p_ripeti;volte++)
   {
-    DDRC |= (1 << PC6);     // set PC6 for output
-    TOGGLE_BIT(PORTC,PC6);
+  //  TOGGLE_BIT(PORTC,BUZZER);
     my_delay_ms(p_delay_suono);
-    TOGGLE_BIT(PORTC,PC6);    
+  //  TOGGLE_BIT(PORTC,BUZZER);    
   }
-  */
 }
 
 /************************************KEYPAD***************************/
@@ -826,7 +820,7 @@ void getTastoPremuto_x_targa()
   lcd.print("TARGA:" + TARGA);
 }
 
-/********************************************************************/
+/*******************************************************************
 
 
 bool InviaRifornimento(int P_stato,int p_connesso, char P_datiVerifica[],int P_l_buffer,String P_prefisso)
@@ -849,7 +843,7 @@ bool InviaRifornimento(int P_stato,int p_connesso, char P_datiVerifica[],int P_l
   }
   else {return false;};
 }
-
+****************************************************************************/
 
 String leggiTAG_Mezzo(bool scrivi)
 {
@@ -1281,12 +1275,17 @@ void Azzera()
    Rele_Abilitazione2(1,7);
    Control_WIFI(0);
    
-   clientToServizio.flush();
-   clientToServizio.stop();
-   clientREST.flush();
-   clientREST.stop();
-   Connected = false;
+   //clientToServizio.flush();
+   //clientToServizio.stop();
    
+   _delay_ms(5);
+   clientATE.flush();
+   clientATE.stop();
+   _delay_ms(5);
+   clientLOCAL.flush();
+   clientLOCAL.stop();
+   Connected = false;
+   _delay_ms(5);
    enable_FLASH();
    _delay_ms(5);
    disable_FLASH();
@@ -1389,29 +1388,32 @@ void loop() {
            lcd.display();          
            _delay_ms(10);
             
-           righeDisplay[1] = " * AUTENTICAZIONE *";
-           righeDisplay[2] = "";
+           //righeDisplay[1] = " * AUTENTICAZIONE *";
+		   righeDisplay[1] = " * RICONOSCIMENTO *";
+           righeDisplay[2] = "..In Corso....";
            righeDisplay[3] = "   Rfid: " + ATe;
+		   // righeDisplay[3] = "";
          
            displayLCD(righeDisplay,stato_procedura,100);
-           //Ethernet.begin(mac, ip, myDns, gateway, subnet);
-		   InizializzaEthernet();
-            // give the WIZ5500 a second to initialize
-            _delay_ms(1000);
-         }
-
-         // Effettua chiamata REST per validare CARD NFC
-         // Se la CARD è valida memorizza in memoria l'operazione e prosegui
-         // Altrimenti Memorizza in Memoria e Azzera la procedura.
       
+	  	   InizializzaEthernet();
+           // give the WIZ5500 a second to initialize...
+           _delay_ms(1000);
+         }
+  
         // stato_procedura++; // da commentare
          
          /****************************************************/
-         if (GetAteValidation(80,serverATE,clientREST,ATe)) 
+		 // Effettua chiamata REST per validare CARD NFC
+		 // Se la CARD è valida memorizza in memoria l'operazione e prosegui
+		 
+		 // Altrimenti Memorizza in Memoria e Azzera la procedura. // DA IMPLEMENTARE
+		 
+         if (GetAteValidation(80,serverATE,clientATE,ATe)) 
           { 
             SET_BIT(PORTC,PC4);
             
-            //Buzzer(1,400); 
+            Buzzer(1,400); 
             
             righeDisplay[1] =  "****** ESITO *****";
             righeDisplay[2] =  "";
@@ -1424,7 +1426,7 @@ void loop() {
           } 
          else 
           { 
-            //Buzzer(3,200);
+            Buzzer(3,200);
             
             righeDisplay[1] =  "****** ESITO *****";
             righeDisplay[2] =  "";
@@ -1432,7 +1434,8 @@ void loop() {
             
             displayLCD(righeDisplay,stato_procedura,100);
             _delay_ms(1000);
-            Azzera();
+			avanzaStato(TinputTarga);
+            // Azzera();
            }   
           /*****************************************************/
     }
@@ -1459,8 +1462,8 @@ void loop() {
     break;
     case 3:
     {       
-       getTastoPremuto_x_targa();
-      String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC
+      getTastoPremuto_x_targa();
+      String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
       _delay_ms(10);
 
       Serial.println(mezzoString);
@@ -1578,10 +1581,7 @@ void loop() {
       if (BIT_IS_CLEAR(PORTC,4)) 
       {
         displayLCD(righeDisplay,stato_procedura,10);  
-        // InizializzaEthernet();
-        // _delay_ms(1000);
-        // Control_WIFI(0);
-        
+
         Messaggio = ""; 
         
         for (int k = 0;k<4;k++)
@@ -1589,7 +1589,7 @@ void loop() {
       
     _delay_ms(1000);      
         
-    if (PostErogazione(5001,serverREST,clientRESTlocal,Messaggio))
+    if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
     {
       disable_ETH();
     
@@ -1600,10 +1600,7 @@ void loop() {
       displayLCD(righeDisplay,stato_procedura,100);
     
       _delay_ms(20);
-        
-	  // Azzera();
     }
-    // else { avanzaStato(TmaxSalvataggio); }
     
 	disable_ETH();
 	avanzaStato(TmaxSalvataggio);
@@ -1634,6 +1631,7 @@ void loop() {
     break;
     case 8:
     { 
+		 Azzera();
 		/*
           righeDisplay[1] =  "";
           righeDisplay[2] = "Salvo Dati........";

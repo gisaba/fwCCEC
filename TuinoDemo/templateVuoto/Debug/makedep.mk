@@ -4,7 +4,7 @@
 
 Sketch.cpp
 
-src\libraries\Adafruit-PN532\Adafruit_PN532.cpp
+src\libraries\NFC-PN532\NFC_PN532.cpp
 
 src\libraries\DS3231M\src\DS3231M.cpp
 
@@ -19,8 +19,6 @@ src\libraries\Ethernet2\src\EthernetClient.cpp
 src\libraries\Ethernet2\src\EthernetServer.cpp
 
 src\libraries\Ethernet2\src\EthernetUdp2.cpp
-
-src\libraries\Ethernet2\src\Twitter.cpp
 
 src\libraries\Ethernet2\src\utility\socket.cpp
 
