@@ -17,9 +17,8 @@
 byte pn532ack[] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
 byte pn532response_firmwarevers[] = {0x00, 0xFF, 0x06, 0xFA, 0xD5, 0x03};
 
-// If using Native Port on Arduino Zero or Due define as SerialUSB
+
 #define PN532DEBUGPRINT Serial
-//#define PN532DEBUGPRINT SerialUSB
 
 #define PN532_PACKBUFFSIZ 64
 byte pn532_packetbuffer[PN532_PACKBUFFSIZ];
@@ -37,11 +36,7 @@ byte pn532_packetbuffer[PN532_PACKBUFFSIZ];
 /**************************************************************************/
 static inline void i2c_send(uint8_t x)
 {
- // #if ARDUINO >= 100
     WIRE.write((uint8_t)x);
- // #else
- //   WIRE.send(x);
- // #endif
 }
 
 /**************************************************************************/
@@ -51,11 +46,7 @@ static inline void i2c_send(uint8_t x)
 /**************************************************************************/
 static inline uint8_t i2c_recv(void)
 {
- // #if ARDUINO >= 100
-    return WIRE.read();
-//  #else
-//    return WIRE.receive();
-//  #endif
+     return WIRE.read();
 }
 
 
@@ -68,11 +59,7 @@ static inline uint8_t i2c_recv(void)
     @param  reset     Location of the RSTPD_N pin
 */
 /**************************************************************************/
-NFC_PN532::NFC_PN532(uint8_t irq, uint8_t reset):
-  /*_clk(0),
-  _miso(0),
-  _mosi(0),
-  _ss(0),*/
+NFC_PN532::NFC_PN532(uint8_t irq, uint8_t reset):  
   _irq(irq),
   _reset(reset),
   _usingSPI(false),
@@ -261,14 +248,6 @@ bool NFC_PN532::sendCommandCheckAck(uint8_t *cmd, uint8_t cmdlen, uint16_t timeo
       PN532DEBUGPRINT.println(F("No ACK frame received!"));
     #endif
     return false;
-  }
-
-  // For SPI only wait for the chip to be ready again.
-  // This is unnecessary with I2C.
-  if (_usingSPI) {
-    if (!waitready(timeout)) {
-      return false;
-    }
   }
 
   return true; // ack'd command
@@ -1532,5 +1511,4 @@ void NFC_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen) {
       PN532DEBUGPRINT.println();
     #endif
 }
-/************** low level SPI */
 

@@ -151,7 +151,7 @@ IPAddress subnet(255, 255, 0, 0); // SUBNET
 
 char serverATE[] = "wbpate-test.dipvvf.it";
 char serverGAC[] = "gacweb-test.dipvvf.it";
-char serverREST[] = "dell_barbato.sa.dipvvf.it";
+char serverREST[] = "geoserver.sa.dipvvf.it";
 
 EthernetClient clientLOCAL;
 EthernetClient clientATE;
@@ -217,39 +217,6 @@ void InizializzaEthernet()
   }
   else {Serial.println("In Attesa di Client");}
   /*****************************/
-}
-
-void initIOExpander()
-{
-  // Write the configuration of the individual pins as inputs or outputs
-  
-  Wire.begin();         // join i2c bus (address optional for master)
-
-  Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-  Wire.write(PCA9534_OP_REGISTER);
-  Wire.write(0xC3);
-  Wire.endTransmission();
-
-  Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-  Wire.write(PCA9534_INV_REGISTER);
-  Wire.write(0x00);
-  Wire.endTransmission();
-
-  _delay_ms(10);
-  
-  Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-  Wire.write(PCA9534_CONF_REGISTER);
-  Wire.write(0x3C); // Identifico la Riga
-  //Wire.write(0xFF); // Identifico la Colonna
-  Wire.endTransmission();
-  
-  _delay_ms(10);
-  
-  Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-  Wire.write(PCA9534_IP_REGISTER);
-  Wire.endTransmission();
-
-  Wire.begin();
 }
 
 /************************************************************/
@@ -594,11 +561,7 @@ void setup() {
    Serial.println("POTENZIOMETRI OK");
    printLine();
   /*************************KEYPAD*********************/
-  printLine();
-  Serial.println("/*************************KEYPAD*********************/");
-  _delay_ms(50);  
-  initIOExpander();  
-  printLine();
+ 
   /**************** SETTING INIZIALI ******************/      
   stato_procedura = -2; // set stato iniziale
   StatoAttuale = "Starting ...."; 
@@ -620,45 +583,6 @@ void Buzzer(uint8_t p_ripeti,uint32_t p_delay_suono) {
   }
 }
 
-/************************************KEYPAD***************************/
-
- void leggiRighe()
- {
-   
-   Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-   Wire.write(PCA9534_CONF_REGISTER);
-   Wire.write(0xC3); // Identifico la riga
-   Wire.endTransmission();
-   
-   _delay_ms(5);   
- }
-
- void leggiColonne()
- {
-   Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-   Wire.write(PCA9534_CONF_REGISTER);
-   Wire.write(0x3C); // Identifico la Colonna
-   Wire.endTransmission();
-   
-   _delay_ms(5);
- }
-
- void leggi_IP_REGISTER()
- {
-   Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-   Wire.write(PCA9534_IP_REGISTER);
-   Wire.endTransmission();
-
-   _delay_ms(5);
- }
- void leggi_OP_REGISTER()
- {
-   Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-   Wire.write(PCA9534_OP_REGISTER);
-   Wire.endTransmission();
-
-   _delay_ms(5);
- }
 
 void displayLCD(String righe[],int stato,int delay_lcd)                                               // get the current time             //
 {
@@ -688,137 +612,6 @@ void avanzaStato(unsigned long p_timer) {
   stato_procedura++;
 }
 
-void getTastoPremuto_x_targa()
-{
-  Wire.flush();
-  Wire.requestFrom(0x20, 1);
-  
-  String tasto = "";
-  
-  while(Wire.available())    // slave may send less than requested
-  {
-    uint8_t c = Wire.read();    // receive a byte as character
-    
-    //lcd.clear();
-    //lcd.setCursor(0,3);
-    //lcd.print("KEY : " + String(byte(c)));         // print the character
-    //_delay_ms(500);
-
-    byte key = byte(c);
-    
-    switch (key)
-    {
-      case 60:
-      { /*Serial.println("RIPOSO"); delay(10); Serial.println("KEY : " + String(byte(c)));*/} // se a riposo per troppo reset premuto e prolungato
-      break;
-      case 195:
-      { /*Serial.println("RIPOSO"); delay(10); Serial.println("KEY : " + String(byte(c)));*/} // se a riposo per troppo reset premuto e prolungato
-      break;
-      case 194:
-      { key_idx[0] = 1; _delay_ms(5); leggiColonne(); premuto++; } // Riga 1
-      break;
-      case 193:
-      { key_idx[0] = 2; _delay_ms(5); leggiColonne(); premuto++;}  // Riga 2
-      break;
-      case 67:
-      { key_idx[0] = 3; _delay_ms(5); leggiColonne(); premuto++;}  // Riga 3
-      break;
-      case 131:
-      { key_idx[0] = 4; _delay_ms(5); leggiColonne(); premuto++;}  // Riga 4
-      break;
-      case 199:
-      { key_idx[1] = 1; _delay_ms(5); leggiRighe();  leggi_OP_REGISTER();  } // Colonna 1
-      break;
-      case 203:
-      { key_idx[1] = 2; _delay_ms(5); leggiRighe();  leggi_OP_REGISTER();  } // Colonna 2
-      break;
-      case 211:
-      { key_idx[1] = 3; _delay_ms(5); leggiRighe();  leggi_OP_REGISTER();  } // Colonna 3
-      break;
-      case 227:
-      { key_idx[1] = 4; _delay_ms(5); leggiRighe();  leggi_OP_REGISTER();  } // Colonna 4
-      break;
-      default: leggiColonne(); break;
-    }
-    
-    leggi_IP_REGISTER();
-    
-    if (premuto > 0)
-    {
-      InputKey = MappaKeys[key_idx[0]-1];
-
-      if ((key_idx[0] == 4) && (key_idx[1] == 3)) // # Conferma Dati inseriti
-      {
-        prolungato++;
-        
-        if ((prolungato > 2) && (TARGA.length() == 5))
-        {
-          Buzzer(1,100);
-          avanzaStato(TselDistributore);
-        }
-      }
-      else if ((key_idx[0] == 4) && (key_idx[1] == 1)) // * Cancella dati digitati
-      {
-        prolungato++;       
-
-        if (prolungato > 2)
-        {       
-          Buzzer(1,150);    
-          TARGA = "";
-          righeDisplay[1] =  "****** TARGA ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] = "TARGA:" + TARGA;
-          lcd.clear();
-          lcd.setCursor(0,3);
-          lcd.print("TARGA:" + TARGA);
-        }
-      }
-      else if ((key_idx[0] == 1) && (key_idx[1] == 4)) // A
-      {
-          righeDisplay[1] =  "****** TARGA ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] = "TARGA:" + TARGA;       
-      }
-      else if ((key_idx[0] == 2) && (key_idx[1] == 4)) // B
-      {
-          righeDisplay[1] =  "****** TARGA ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] = "TARGA:" + TARGA;
-      }
-      else if ((key_idx[0] == 3) && (key_idx[1] == 4)) // C
-      {
-          righeDisplay[1] =  "****** TARGA ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] = "TARGA:" + TARGA;
-      }
-      else if ((key_idx[0] == 4) && (key_idx[1] == 4)) // .
-      {
-          righeDisplay[1] =  "****** TARGA ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] =  "TARGA:" + TARGA;
-      }
-      else if (premuto < 2) {
-          
-          TARGA += InputKey.substring(key_idx[1]-1,key_idx[1]);
-          righeDisplay[1] =  "****** TARGA ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] = "TARGA:" + TARGA;
-          prolungato = 0;
-          Buzzer(1,10);         
-      }
-      //tasto = InputKey.substring(key_idx[1]-1,key_idx[1]);      
-      premuto = 0;
-      //displayLCD(righeDisplay,stato_procedura,50);
-    }
-    _delay_ms(2); // dealy necessario per non leggere pressioni conscutive
-  } 
-  
-  lcd.setCursor(0,0);
-  lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
-  lcd.print((char)1);  // STAMPA LA CLESSIDRA
-  lcd.setCursor(0,3);
-  lcd.print("TARGA:" + TARGA);
-}
 
 /*******************************************************************
 
@@ -1022,7 +815,8 @@ bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String 
     
         strURLAPI = "POST /api/erogazioni/ HTTP/1.1\r\n";
         //strURLAPI += "Host: totemino.sa.dipvvf.it:5000";
-        strURLAPI += "Host: 192.168.18.13:5001";
+        //strURLAPI += "Host: 192.168.18.13:5001";
+		strURLAPI += "Host: geoserver.sa.dipvvf.it:5000";
         strURLAPI += "\r\n";
         strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
         strURLAPI += "\r\n";
@@ -1462,8 +1256,9 @@ void loop() {
     break;
     case 3:
     {       
-      getTastoPremuto_x_targa();
-      String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+      
+      
+	  String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
       _delay_ms(10);
 
       Serial.println(mezzoString);
@@ -1631,49 +1426,12 @@ void loop() {
     break;
     case 8:
     { 
-		 Azzera();
-		/*
-          righeDisplay[1] =  "";
-          righeDisplay[2] = "Salvo Dati........";
-          righeDisplay[3] =  "";
-          displayLCD(righeDisplay,stato_procedura,10);
-           _delay_ms(5);
-          disable_ETH();
-          Serial.println("ETH SS Disable");
-          _delay_ms(5);
-          enable_FLASH();
-          Serial.println("FLASH SS Enable");
-          printLine();
-          FlashpowerUp(100); 
-          _delay_ms(5); 
-          erogazioniSaver(addr_erog,Messaggio);   
-          _delay_ms(5);
-          printLine();
-	      righeDisplay[1] =  "";
-          righeDisplay[2] = "Dati Salvati..";
-          righeDisplay[3] =  "";
-          displayLCD(righeDisplay,stato_procedura,10);
-          _delay_ms(1000); 
-          avanzaStato(TmaxSalvataggio);    
-		*/   
+	 Azzera();		
     }
     break;
     case 9:
-    {   
-      /***************************************/
-      disable_ETH();
-      _delay_ms(5);
-      String a;
-      flash.readStr(addr_erog,a);
-      _delay_ms(5);
-      Serial.print("NON INVIATE : ");
-      Serial.println(a);
-      _delay_ms(5);
-      FlashpowerDown(100);
-      _delay_ms(5);
-      disable_FLASH();  
-      Azzera();
-      /***************************************/
+    {        
+      Azzera();    
     }
     break;
     case 100:

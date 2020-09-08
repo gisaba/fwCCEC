@@ -1,6 +1,4 @@
 
-#ifndef ADAFRUIT_PN532_H
-#define ADAFRUIT_PN532_H
 
  #include "Arduino.h"
 // #include "WProgram.h"
@@ -185,4 +183,3 @@ class NFC_PN532{
   // Note there are i2c_read and i2c_write inline functions defined in the .cpp file.
 };
 
-#endif

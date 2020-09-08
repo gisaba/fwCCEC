@@ -4,6 +4,8 @@
 
 Sketch.cpp
 
+src\libraries\Keypad\src\PCA9534.cpp
+
 src\libraries\NFC-PN532\NFC_PN532.cpp
 
 src\libraries\DS3231M\src\DS3231M.cpp
