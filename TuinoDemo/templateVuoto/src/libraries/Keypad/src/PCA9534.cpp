@@ -19,56 +19,80 @@ void PCA9534::begin(uint8_t i2caddr) {
 	
 	Wire.begin();
 	
+}
+
+uint8_t PCA9534::getIo()
+{
+    setCONFREG(0x3C);
+    uint8_t c = Read_IP_REGISTER();   
+    char buf[8];
+    itoa(c,buf,2);
+   /****************************
+    Serial.print("IP REGISTER ");
+    Serial.println(buf);
+    /****************************/ 
+    setCONFREG(0xC3);
+    uint8_t r = Read_IP_REGISTER();
+    char bufr[8];
+    itoa(r,bufr,2);
+    /****************************
+    Serial.print("IP REGISTER ");
+    Serial.println(bufr);
+    /****************************/
+    char ris[8];
+    uint8_t z = (r ^ c);  
+    itoa(z,ris,2);
+    /****************************
+    Serial.print("XOR : ");
+    Serial.println(ris);
+    Serial.println(z);
+    /****************************/   
+   
+    return z;
+     
+    _delay_ms(50);   
+}
+
+void PCA9534::setporteIoExp(uint8_t OPREG,uint8_t INVREG,uint8_t CONFREG) {
+	
+	// _i2caddr = i2caddr;
+	
 	Wire.beginTransmission(_i2caddr);
 	Wire.write(PCA9534_OP_REGISTER);
-	Wire.write(0xC3);
+	//Wire.write(0xC3);
+	Wire.write(OPREG);
 	Wire.endTransmission();
 
 	Wire.beginTransmission(_i2caddr);
 	Wire.write(PCA9534_INV_REGISTER);
-	Wire.write(0x00);
+	//Wire.write(0x00);
+	Wire.write(INVREG);
 	Wire.endTransmission();
 
 	_delay_ms(10);
 	
 	Wire.beginTransmission(_i2caddr);
 	Wire.write(PCA9534_CONF_REGISTER);
-	Wire.write(0x3C);
+	//Wire.write(0x3C);
+	Wire.write(CONFREG);
 	Wire.endTransmission();
 
 	_delay_ms(10);
-	
-	Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-	Wire.write(PCA9534_IP_REGISTER);
-	Wire.endTransmission();
 
-	Wire.begin();
-	
 }
 
-void PCA9534::colonne(uint8_t i2caddr) {
+void PCA9534::setCONFREG(uint8_t CONFREG) {
 	
-	_i2caddr = i2caddr;
+	//_i2caddr = i2caddr;
 
-	Wire.beginTransmission(PCA9534_I2C_ADDRESS);
+	Wire.beginTransmission(_i2caddr);
 	Wire.write(PCA9534_CONF_REGISTER);
-	Wire.write(0x3C); // Identifico la Colonna
+	//Wire.write(0x3C); // Identifico la Colonna
+	//Wire.write(0xC3); // Identifico la riga
+	Wire.write(CONFREG);
 	Wire.endTransmission();
 	
-	_delay_ms(10);
-	
-}
-
-void PCA9534::righe(uint8_t i2caddr) {
-	
-	_i2caddr = i2caddr;
-
-	Wire.beginTransmission(PCA9534_I2C_ADDRESS);
-	Wire.write(PCA9534_CONF_REGISTER);
-	Wire.write(0xC3); // Identifico la riga
-	Wire.endTransmission();
-	
-	_delay_ms(10);
+	//_delay_ms(10);
 	
 }
 
@@ -147,10 +171,10 @@ uint8_t PCA9534::digitalRead(uint8_t pin) {
 	return (buff & (1 << pin)) ? HIGH : LOW;
 }
 
-uint8_t PCA9534::Read_IP_REGISTER(uint8_t i2caddr) {
+uint8_t PCA9534::Read_IP_REGISTER() {
 	uint8_t buff = 0;
 
-	_i2caddr = i2caddr;
+	//_i2caddr = i2caddr;
 
 	Wire.beginTransmission(_i2caddr);
 	Wire.write(PCA9534_IP_REGISTER);

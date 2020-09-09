@@ -42,22 +42,6 @@ src\libraries\LiquidCrystal\src\LiquidCrystal.cpp
 
 src\libraries\LiquidCrystal\src\LiquidCrystal_I2C.cpp
 
-src\libraries\SPIMemory\src\diagnostics.cpp
-
-src\libraries\SPIMemory\src\DMASAM.cpp
-
-src\libraries\SPIMemory\src\SPIFlash.cpp
-
-src\libraries\SPIMemory\src\SPIFlashIO.cpp
-
-src\libraries\SPIMemory\src\SPIFlashSFDP.cpp
-
-src\libraries\SPIMemory\src\SPIFram.cpp
-
-src\libraries\SPIMemory\src\SPIFramIO.cpp
-
-src\libraries\SPIMemory\src\SPIMemory.cpp
-
 src\libraries\SPI\src\SPI.cpp
 
 src\libraries\Wire\src\utility\twi.c

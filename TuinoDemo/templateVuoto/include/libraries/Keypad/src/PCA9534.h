@@ -2,19 +2,17 @@
 * PCA9534.h
 *
 * Created: 03/09/2020 17:05:08
-* Author: Giovanni Barbato
+* Author: Administrator
 */
 
 #include "Arduino.h"
 
-#pragma once
-
-#define PCA9534_I2C_ADDRESS     0x20
-#define PCA9534_IP_REGISTER     0x00
-#define PCA9534_OP_REGISTER     0x01
-#define PCA9534_INV_REGISTER    0x02
-#define PCA9534_CONF_REGISTER   0x03
-#define INPUT_INVERTED          0x04
+const uint8_t PCA9534_I2C_ADDRESS    =  0x20;
+const uint8_t PCA9534_IP_REGISTER    =  0x00;
+const uint8_t PCA9534_OP_REGISTER    =  0x01;
+const uint8_t PCA9534_INV_REGISTER   =  0x02;
+const uint8_t PCA9534_CONF_REGISTER  =  0x03;
+const uint8_t INPUT_INVERTED         =  0x04;
 
 
 class PCA9534 {
@@ -34,9 +32,13 @@ public:
    */
   void begin(uint8_t i2caddr = PCA9534_I2C_ADDRESS);
 
-  void colonne(uint8_t i2caddr = PCA9534_I2C_ADDRESS);
+  void setCONFREG(uint8_t CONFREG);
 
-  void righe(uint8_t i2caddr = PCA9534_I2C_ADDRESS);
+  void setporteIoExp(uint8_t OPREG,uint8_t INVREG,uint8_t CONFREG);
+
+  uint8_t getIo();
+
+  uint8_t Read_IP_REGISTER();
 
   /**
    * Configures the specified pin to behave either as an input, inverted input,
@@ -64,8 +66,6 @@ public:
    * @returns {uint8_t} The status of the pin either HIGH or LOW.
    */
   uint8_t digitalRead(uint8_t pin);
-
-  uint8_t Read_IP_REGISTER(uint8_t i2caddr);
 
 private:
   uint8_t _i2caddr; // I2C address of the device

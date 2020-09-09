@@ -609,27 +609,6 @@
     <Compile Include="include\libraries\LiquidCrystal\src\LiquidCrystal_I2C.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\defines.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\diagnostics.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\DMASAM.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\DMASAMD.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\SPIFlash.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\SPIFram.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="include\libraries\SPIMemory\src\SPIMemory.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="include\libraries\SPI\src\SPI.h">
       <SubType>compile</SubType>
     </Compile>
@@ -699,30 +678,6 @@
     <Compile Include="src\libraries\LiquidCrystal\src\LiquidCrystal_I2C.cpp">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\diagnostics.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\DMASAM.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\SPIFlash.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\SPIFlashIO.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\SPIFlashSFDP.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\SPIFram.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\SPIFramIO.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\SPIMemory\src\SPIMemory.cpp">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="src\libraries\SPI\src\SPI.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -755,8 +710,6 @@
     <Folder Include="include\libraries\Keypad\src\" />
     <Folder Include="include\libraries\LiquidCrystal\" />
     <Folder Include="include\libraries\LiquidCrystal\src\" />
-    <Folder Include="include\libraries\SPIMemory\" />
-    <Folder Include="include\libraries\SPIMemory\src\" />
     <Folder Include="include\libraries\SPI\" />
     <Folder Include="include\libraries\SPI\src\" />
     <Folder Include="include\libraries\Wire\" />
@@ -774,8 +727,6 @@
     <Folder Include="src\libraries\Keypad\src\" />
     <Folder Include="src\libraries\LiquidCrystal\" />
     <Folder Include="src\libraries\LiquidCrystal\src\" />
-    <Folder Include="src\libraries\SPIMemory\" />
-    <Folder Include="src\libraries\SPIMemory\src\" />
     <Folder Include="src\libraries\SPI\" />
     <Folder Include="src\libraries\SPI\src\" />
     <Folder Include="src\libraries\Wire\" />
