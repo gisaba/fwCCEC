@@ -83,9 +83,9 @@ void NFC_PN532::begin() {
     // Reset the PN532
     digitalWrite(_reset, HIGH);
     digitalWrite(_reset, LOW);
-    delay(400);
+    _delay_ms(400);
     digitalWrite(_reset, HIGH);
-    delay(10);  // Small delay required before taking other actions after reset.
+    _delay_ms(10);  // Small _delay_ms required before taking other actions after reset.
                 // See timing diagram on page 209 of the datasheet, section 12.23.
 }
 
@@ -853,7 +853,7 @@ uint8_t NFC_PN532::mifareclassic_WriteDataBlock (uint8_t blockNumber, uint8_t * 
     #endif
     return 0;
   }
-  delay(10);
+  _delay_ms(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
@@ -1099,7 +1099,7 @@ uint8_t NFC_PN532::mifareultralight_WritePage (uint8_t page, uint8_t * data)
     // Return Failed Signal
     return 0;
   }
-  delay(10);
+  _delay_ms(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
@@ -1243,7 +1243,7 @@ uint8_t NFC_PN532::ntag2xx_WritePage (uint8_t page, uint8_t * data)
     // Return Failed Signal
     return 0;
   }
-  delay(10);
+  _delay_ms(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
@@ -1404,7 +1404,7 @@ bool NFC_PN532::waitready(uint16_t timeout) {
         return false;
       }
     }
-    delay(10);
+    _delay_ms(10);
   }
   return true;
 }
@@ -1422,7 +1422,7 @@ void NFC_PN532::readdata(uint8_t* buff, uint8_t n) {
      // I2C write.
     uint16_t timer = 0;
 
-    delay(2);
+    _delay_ms(2);
 
     #ifdef PN532DEBUG
       PN532DEBUGPRINT.print(F("Reading: "));
@@ -1432,7 +1432,7 @@ void NFC_PN532::readdata(uint8_t* buff, uint8_t n) {
     // Discard the leading 0x01
     i2c_recv();
     for (uint8_t i=0; i<n; i++) {
-      delay(1);
+      _delay_ms(1);
       buff[i] = i2c_recv();
       #ifdef PN532DEBUG
         PN532DEBUGPRINT.print(F(" 0x"));
@@ -1467,7 +1467,7 @@ void NFC_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen) {
       PN532DEBUGPRINT.print(F("\nSending: "));
     #endif
 
-    delay(2);     // or whatever the delay is for waking up the board
+    _delay_ms(2);     // or whatever the _delay_ms is for waking up the board
 
     // I2C START
     WIRE.beginTransmission(PN532_I2C_ADDRESS);

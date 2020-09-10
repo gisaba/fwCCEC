@@ -2,10 +2,11 @@
 * PCA9534.h
 *
 * Created: 03/09/2020 17:05:08
-* Author: Administrator
+* Author: Giovanni Barbato
 */
 
-#include "Arduino.h"
+#pragma once
+#include <Arduino.h>
 
 const uint8_t PCA9534_I2C_ADDRESS    =  0x20;
 const uint8_t PCA9534_IP_REGISTER    =  0x00;
@@ -13,7 +14,8 @@ const uint8_t PCA9534_OP_REGISTER    =  0x01;
 const uint8_t PCA9534_INV_REGISTER   =  0x02;
 const uint8_t PCA9534_CONF_REGISTER  =  0x03;
 const uint8_t INPUT_INVERTED         =  0x04;
-
+const uint8_t CONF_REGISTER			 =  0x3C; 
+const uint8_t INV_CONF_REGISTER		 =  0xC3;
 
 class PCA9534 {
 public:

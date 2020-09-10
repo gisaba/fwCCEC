@@ -38,7 +38,7 @@
         <documentation help="" />
         <offline-documentation help="" />
         <dependencies>
-          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.34.1" />
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.39.0" />
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
@@ -594,9 +594,6 @@
     <Compile Include="include\libraries\Keypad\src\Keypad.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="include\libraries\Keypad\src\Keypad_I2C.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="include\libraries\LiquidCrystal\src\I2CIO.h">
       <SubType>compile</SubType>
     </Compile>
@@ -661,9 +658,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\libraries\Keypad\src\Keypad.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\Keypad\src\Keypad_I2C.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\libraries\LiquidCrystal\src\I2CIO.cpp">

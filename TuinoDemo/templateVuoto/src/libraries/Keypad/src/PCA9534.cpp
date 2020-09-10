@@ -1,11 +1,7 @@
 
-#include "PCA9534.h"
-#include "Arduino.h"
-
-// #include "WProgram.h"
-
+#include <PCA9534.h>
+#include <Arduino.h>
 #include <Wire.h>
-#define WIRE Wire
 
 PCA9534::PCA9534() {
 	_i2caddr = 0;
@@ -18,39 +14,23 @@ void PCA9534::begin(uint8_t i2caddr) {
 	_i2caddr = i2caddr;
 	
 	Wire.begin();
-	
 }
 
 uint8_t PCA9534::getIo()
 {
     setCONFREG(0x3C);
-    uint8_t c = Read_IP_REGISTER();   
+	uint8_t c = Read_IP_REGISTER();   
     char buf[8];
     itoa(c,buf,2);
-   /****************************
-    Serial.print("IP REGISTER ");
-    Serial.println(buf);
-    /****************************/ 
     setCONFREG(0xC3);
     uint8_t r = Read_IP_REGISTER();
     char bufr[8];
     itoa(r,bufr,2);
-    /****************************
-    Serial.print("IP REGISTER ");
-    Serial.println(bufr);
-    /****************************/
     char ris[8];
     uint8_t z = (r ^ c);  
     itoa(z,ris,2);
-    /****************************
-    Serial.print("XOR : ");
-    Serial.println(ris);
-    Serial.println(z);
-    /****************************/   
-   
     return z;
-     
-    _delay_ms(50);   
+    // _delay_ms(50);   
 }
 
 void PCA9534::setporteIoExp(uint8_t OPREG,uint8_t INVREG,uint8_t CONFREG) {

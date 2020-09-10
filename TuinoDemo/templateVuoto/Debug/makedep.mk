@@ -32,8 +32,6 @@ src\libraries\Keypad\src\Key.cpp
 
 src\libraries\Keypad\src\Keypad.cpp
 
-src\libraries\Keypad\src\Keypad_I2C.cpp
-
 src\libraries\LiquidCrystal\src\I2CIO.cpp
 
 src\libraries\LiquidCrystal\src\LCD.cpp
