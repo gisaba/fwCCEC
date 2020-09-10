@@ -989,7 +989,8 @@ void loop() {
     }
     break;
     case 1:
-    { 	TARGA = "";
+    { 
+		TARGA = "";
 			
 		righeDisplay[1] = " * AUTENTICAZIONE *";
 		righeDisplay[2] = "";
@@ -1023,15 +1024,14 @@ void loop() {
            
            lcd.backlight();
            lcd.display();          
-           _delay_ms(10);
-            
-           //righeDisplay[1] = " * AUTENTICAZIONE *";
-           righeDisplay[1] = "  RICONOSCIMENTO ";
-           righeDisplay[2] = ".....In Corso.....";
-           //righeDisplay[3] = "   Rfid: " + ATe;
-           righeDisplay[3] = "Attendere.........";
-         
-           displayLCD(righeDisplay,stato_procedura,100);
+           _delay_ms(10);               
+		   
+		   righeDisplay[1] = "  RICONOSCIMENTO ";
+		   righeDisplay[2] = ".....In Corso.....";
+		   //righeDisplay[3] = "   Rfid: " + ATe;
+		   righeDisplay[3] = "Attendere.........";
+		       
+		   displayLCD(righeDisplay,stato_procedura,100);   
       
            InizializzaEthernet();
            // give the WIZ5500 a second to initialize...
@@ -1045,32 +1045,24 @@ void loop() {
         if (GetAteValidation(80,serverATE,clientATE,ATe)) 
         { 
             SET_BIT(PORTC,PC4);
-            Buzzer(1,400); 
-//             righeDisplay[1] =  "****** ESITO *****";
-//             righeDisplay[2] =  "";
-//             righeDisplay[3] = "Utente Riconosciuto";
-			
+            Buzzer(1,400); 		
 			righeDisplay[1] =  "****** TARGA ******";
 			righeDisplay[2] =  "";
-			righeDisplay[3] = "TARGA:";
-            
+			righeDisplay[3] = "TARGA:";            
             displayLCD(righeDisplay,stato_procedura,10);   
-			_delay_ms(100);         
+			_delay_ms(50);         
             avanzaStato(TinputTarga); 
           } 
          else 
           { 
             Buzzer(3,200);
-//             righeDisplay[1] =  "****** ESITO *****";
-//             righeDisplay[2] =  "";
-//             righeDisplay[3] = "Utente Sconosciuto";
 			righeDisplay[1] =  "****** TARGA ******";
 			righeDisplay[2] =  "";
 			righeDisplay[3] = "TARGA:";
             displayLCD(righeDisplay,stato_procedura,10);       
-			_delay_ms(100);     
+			_delay_ms(50);     
             avanzaStato(TinputTarga);
-            // Azzera();
+            //Azzera();
            }   
           /*****************************************************/		  		  
     }
@@ -1100,7 +1092,7 @@ void loop() {
 	  itoa(z,ris,2);
 	  
 	  char T = getCharKeypad(int(z));
-	  _delay_ms(100);
+	  _delay_ms(50);
 	  
 	  switch (T) {
 		  case ('N'): {
@@ -1110,6 +1102,14 @@ void loop() {
 		  case ('A'): {			  
 				  TARGA = "";
 				  avanzaStato(TinputTarga);			  
+		  }
+		   case ('B'): {
+			   String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+			   _delay_ms(10);			   
+		   }
+		  case ('C'): {
+			  if (TARGA.length() > 0)
+				TARGA = TARGA.substring(0,TARGA.length()-1);			  
 		  }
 		  case ('#'): {			  			  
 			  if (TARGA.length() == 5) {	
@@ -1135,7 +1135,7 @@ void loop() {
     case 3:
     {  
 	  if (TARGA.length() == 5) {
-		  mezzo.Carb = "";
+		  mezzo.Carb = "X";
 		  mezzo.TARGA = TARGA;
 		  mezzo.KM = 0;
 		  avanzaStato(TselDistributore); 
@@ -1183,7 +1183,7 @@ void loop() {
         abilitaPulser('B');
         Rele_Abilitazione2(0,7); // chiudi relè
         StatoAttuale = "BENZINA";
-		RaccoltaDati[2] = "B";
+		RaccoltaDati[2] = mezzo.Carb;
         avanzaStato(10);
       }
       else if (mezzo.Carb == "D")
@@ -1191,7 +1191,7 @@ void loop() {
         abilitaPulser('D');
         Rele_Abilitazione1(0,7); // chiudi relè
         StatoAttuale = "GASOLIO";
-		RaccoltaDati[2] = "D";
+		RaccoltaDati[2] = mezzo.Carb;
         avanzaStato(10);
       }                          
     }
@@ -1366,8 +1366,8 @@ ISR(PCINT3_vect) {
         abilitaPulser('B');
         Rele_Abilitazione2(0,7); // chiudi relè
         Carburante = "B";
-        StatoAttuale = "BENZINA";
-        //stato_procedura++;
+		RaccoltaDati[2] = Carburante;
+        StatoAttuale = "BENZINA";       
         avanzaStato(10);                            
         intConsecutivePresses = 0;                    // and reset press counts
         intConsecutiveNonPresses = 0;
@@ -1389,8 +1389,8 @@ ISR(PCINT3_vect) {
         abilitaPulser('D');
         Rele_Abilitazione1(0,7); // chiudi relè
         Carburante = "D";
+		RaccoltaDati[2] = Carburante;
         StatoAttuale = "GASOLIO";
-        //stato_procedura++;
         avanzaStato(10);
         intConsecutivePresses = 0;                    // and reset press counts
         intConsecutiveNonPresses = 0;
