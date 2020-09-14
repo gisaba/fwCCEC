@@ -26,8 +26,6 @@ src\libraries\Ethernet2\src\utility\socket.cpp
 
 src\libraries\Ethernet2\src\utility\w5500.cpp
 
-src\libraries\Keypad\src\i2ckeypad.cpp
-
 src\libraries\Keypad\src\Key.cpp
 
 src\libraries\Keypad\src\Keypad.cpp

@@ -585,9 +585,6 @@
     <Compile Include="include\libraries\Ethernet2\src\utility\w5500.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="include\libraries\Keypad\src\i2ckeypad.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="include\libraries\Keypad\src\Key.h">
       <SubType>compile</SubType>
     </Compile>
@@ -649,9 +646,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\libraries\Ethernet2\src\utility\w5500.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="src\libraries\Keypad\src\i2ckeypad.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\libraries\Keypad\src\Key.cpp">
