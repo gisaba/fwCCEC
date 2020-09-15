@@ -112,7 +112,7 @@ volatile int impulsi = 0;   // Variabile per il conteggio degli impulsi generati
 
 int HTTP_len_response = 12;
 String RispostaHTTP = "";
-
+// Ate;TARGA;CARB;LT;KM;
 String RaccoltaDati[] = {"","","","","",""};
 String Carburante = "X";
 String Risposta = "";
@@ -685,7 +685,7 @@ bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String 
   {        
         _delay_ms(100);
         strURLAPI = "POST /api/erogazioni/ HTTP/1.1\r\n";
-        strURLAPI += "Host: geoserver.sa.dipvvf.it:5000";
+        strURLAPI += "Host: geoserver.sa.dipvvf.it:5001";
         strURLAPI += "\r\n";
         strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
         strURLAPI += "\r\n";
@@ -693,7 +693,8 @@ bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String 
         strURLAPI += "\r\n";
         strURLAPI += "Accept: */*";
         strURLAPI += "\r\n";
-        strURLAPI += "Content-Length: 43";
+        //strURLAPI += "Content-Length: 43";
+		strURLAPI += "Content-Length: " + String(_erogazione.length()+21);
         strURLAPI += "\r\n";
         strURLAPI += "\r\n";
         strURLAPI += "{\r\n";        
@@ -1037,6 +1038,7 @@ void loop() {
            Serial.println("Riconoscimento Tessera .............");
                      
            RaccoltaDati[0] = ATe;
+		   RaccoltaDati[5] = "000";
            
            lcd.backlight();
            lcd.display();          
@@ -1060,6 +1062,7 @@ void loop() {
      
         if (GetAteValidation(80,serverATE,clientATE,ATe)) 
         { 
+			RaccoltaDati[5] = "000";
             SET_BIT(PORTC,PC4);
             Buzzer(1,400); 		
 			righeDisplay[1] =  "****** TARGA ******";
@@ -1071,6 +1074,7 @@ void loop() {
           } 
          else 
           { 
+			RaccoltaDati[5] = "111";
             Buzzer(3,200);
 			righeDisplay[1] =  "****** TARGA ******";			
 			righeDisplay[2] = "TARGA:";
@@ -1218,6 +1222,8 @@ void loop() {
     case 5:
     {             
       // VALIDA MEZZO CON WBSERVICES
+	  
+	  RaccoltaDati[4] = "1234";
       
       impulsi = 0;
       
@@ -1287,9 +1293,11 @@ void loop() {
 
         Messaggio = ""; 
         
-        for (int k = 0;k<4;k++)
+        for (int k = 0;k<6;k++)
           Messaggio.concat(RaccoltaDati[k]+";");  
       
+	Messaggio.concat("SA1001");
+	
     _delay_ms(1000);      
         
     if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
