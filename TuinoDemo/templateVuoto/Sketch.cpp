@@ -155,7 +155,7 @@ DateTime nowTimer;
 
 // Timer avanzamento stati
 /********************************************************************************************/
-unsigned long TverificaBadge = 30;        // 5 secondi
+unsigned long TverificaBadge = 60;        // 5 secondi
 unsigned long TinputTarga = 60;          // 30 Secondi
 unsigned long TselDistributore = 30;     // 30 Secondi
 unsigned long TsgancioPistola = 60;      // 60 secondi
@@ -965,6 +965,41 @@ void Azzera()
    stato_procedura = -2;
 }
 
+void inputTarga(char T) {
+	
+	switch (T) {
+		case ('N'): {
+			Serial.print("NIENTE");
+		}
+		break;
+		case ('A'): {
+			TARGA = "";
+			avanzaStato(TinputTarga);
+		}
+		case ('B'): {
+			String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+			_delay_ms(10);
+		}
+		case ('C'): {
+			if (TARGA.length() > 0)
+			TARGA = TARGA.substring(0,TARGA.length()-1);
+		}
+		case ('#'): {
+			if (TARGA.length() == 5) {
+				mezzo.TARGA = TARGA;
+				RaccoltaDati[1] = mezzo.TARGA;
+				avanzaStato(TinputTarga);
+			}
+		}
+		break;
+		default:  {
+			TARGA += String(T);
+			_delay_ms(20);
+		}
+		break;
+	}
+}
+
 /**************************LOOP PROCEDURA************************************/
 void loop() {
       
@@ -1089,9 +1124,9 @@ void loop() {
     break;
     case 2:
     {   
-//  	  disable_ETH();
-//  	  _delay_ms(50);
-//  	  enable_ETH();
+		//  	  disable_ETH();
+		//  	  _delay_ms(50);
+		//  	  enable_ETH();
 	   
 	  /*****************************************************************/
       // da commentare
@@ -1110,49 +1145,15 @@ void loop() {
 	  char ris[8];
 	  uint8_t z = (r ^ c);
 	  itoa(z,ris,2);
-	  
 	  char T = getCharKeypad(int(z));
-	  _delay_ms(50);
+	  _delay_ms(20);
+	  /*****************************************************************/
 	  
-	  switch (T) {
-		  case ('N'): {
-			  Serial.print("NIENTE");
-		  }
-		  break;
-		  case ('A'): {			  
-				  TARGA = "";
-				  avanzaStato(TinputTarga);			  
-		  }
-		   case ('B'): {
-			   String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-			   _delay_ms(10);			   
-		   }
-		  case ('C'): {
-			  if (TARGA.length() > 0)
-				TARGA = TARGA.substring(0,TARGA.length()-1);
-			  righeDisplay[1] =  "****** TARGA ******";
-			  righeDisplay[2] = "TARGA:" + TARGA;		
-			  righeDisplay[3] = "#:Conferma A:Avanti";	  
-			 // displayLCD(righeDisplay,stato_procedura,10);
-		  }
-		  case ('#'): {			  			  
-			  if (TARGA.length() == 5) {	
-				mezzo.TARGA = TARGA;
-				RaccoltaDati[1] = mezzo.TARGA;				
-				avanzaStato(TinputTarga);
-			  }
-		  }
-		  break;
-		  default:  {
-			  TARGA += String(T);
-			  _delay_ms(20);			  
-			  righeDisplay[1] =  "****** TARGA ******";
-			  righeDisplay[2] = "TARGA:" + TARGA;
-			  righeDisplay[3] = "#:Conferma A:Avanti";
-			 // displayLCD(righeDisplay,stato_procedura,10);
-		  }
-		  break;
-      }
+	  inputTarga(T); 
+	  
+	  righeDisplay[1] =  "****** TARGA ******";
+	  righeDisplay[2] = "TARGA:" + TARGA;
+	  righeDisplay[3] = "#:Conferma A:Usa TAG";
 	  displayLCD(righeDisplay,stato_procedura,10); 
     }
     break;
@@ -1187,7 +1188,7 @@ void loop() {
 			RaccoltaDati[1] = mezzo.TARGA;
 			RaccoltaDati[2] = mezzo.Carb;
 			avanzaStato(TselDistributore); 
-		  }    
+		  }
 	  }
     }
     break;
