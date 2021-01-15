@@ -121,7 +121,7 @@ String righeDisplay[] = {"X","X","X","X"};
 char MessaggioToServer[100] = "";
 
 /************* PULSER *************************/
-/**/    int ImpulsiLitro = 50;              /**/
+/**/    int ImpulsiLitro = 100;              /**/
 /**/    double debounceDelay = 4.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**/    double debounceDelayBenzina = 4.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**********************************************/
@@ -1246,12 +1246,12 @@ void loop() {
       double lt = impulsiToLitri(impulsi);      
       
       righeDisplay[1] = "LITRI :" + String(lt);
-      righeDisplay[2] = "";     
+      // righeDisplay[2] = "imp :" + String(impulsi);  
       righeDisplay[3] = "Erogazione: " + StatoAttuale;
       
-      displayLCD(righeDisplay,stato_procedura,100);   
+      displayLCD(righeDisplay,stato_procedura,10);   
 
-      /* CONTATTO PISTOLA DIESEL*/
+      /* CONTATTO PISTOLA DIESEL */
       
       if ((PINA & _BV(PA1)) && (Carburante == "D"))
       {       
@@ -1264,7 +1264,7 @@ void loop() {
         avanzaStato(10);
       }
       
-      /* CONTATTO PISTOLA BENZINA*/
+      /* CONTATTO PISTOLA BENZINA */
       
       if  ((PINB & _BV(PB1)) && (Carburante == "B"))
       {
@@ -1370,14 +1370,23 @@ void loop() {
 /********************FINE LOOP PROCEDURA************************************/
 
 // interrupt per conteggio impulsi
+/***********************************************************************
+Esempio
+100 impulsi/litro
+73 litri al minuto
+73/60 = 1,22 lt/sec
+1,22*100 = 122 Hz
+***********************************************************************/
 
 ISR(PCINT0_vect) {
        if (PINA & _BV(PA5)){
               impulsi++;
+			  _delay_ms(2.6); // Impostato per 200 Hz di pulser (Periodo 5 ms)
        }
-       if (PINA & _BV(PA6)){
-              impulsi++;
-       }
+        if (PINA & _BV(PA6)){
+               impulsi++;
+ 			  _delay_ms(4);
+        }  
 }
 
 // interrupt per pulsanti abilitazione diesele benzina
