@@ -74,7 +74,7 @@ volatile int intConsecutiveNonPresses = 0;
 struct mezzoType {
   String Carb;
   String TARGA;
-  uint8_t KM;
+  String KM;
 };
 
 struct erogazioni {
@@ -125,7 +125,7 @@ char MessaggioToServer[100] = "";
 /**/    double debounceDelay = 4.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**/    double debounceDelayBenzina = 4.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**********************************************/
-
+char CodSede[] = "SA1001";
 /********************************************************************************************/
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
@@ -169,6 +169,7 @@ const byte ROWS = 4; //four rows
 const byte COLS = 4; //four columns
 
 String TARGA = "";
+String KM = "";
 
 /******** MAPPA TASTIERINO ************/
 
@@ -365,9 +366,9 @@ void Buzzer(uint8_t p_ripeti,uint32_t p_delay_suono) {
   
   for(int volte = 0;volte<p_ripeti;volte++)
   {
-    //TOGGLE_BIT(PORTC,BUZZER);
+    // TOGGLE_BIT(PORTC,BUZZER);
     my_delay_ms(p_delay_suono);
-    //TOGGLE_BIT(PORTC,BUZZER);    
+    // TOGGLE_BIT(PORTC,BUZZER);    
   }
 }
 
@@ -521,11 +522,9 @@ String leggiTAG_Mezzo(bool scrivi)
       {
         uint8_t data[16];
         
-        // If you want to write something to block 4 to test with, uncomment
-        // the following line and this text should be read back in a minute
-        
+		// Se il parametro scrivi è true scriviamo sul blocco 4 del TAG        
         if (scrivi)
-        { memcpy(data, (const uint8_t[]){ '0', '0', '0', '0', '1', 'D',0,0,0,0,0,0,0,0,0,0 }, sizeof data);
+        { memcpy(data, (const uint8_t[]){ '2', '6', '6', '7', '8', 'D',0,0,0,0,0,0,0,0,0,0 }, sizeof data); // 1000030442
          success = nfc.mifareclassic_WriteDataBlock (4, data);
         }
          
@@ -976,14 +975,17 @@ void inputTarga(char T) {
 			TARGA = "";
 			avanzaStato(TinputTarga);
 		}
+		break;	
 		case ('B'): {
 			String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
 			_delay_ms(10);
 		}
+		break;	
 		case ('C'): {
 			if (TARGA.length() > 0)
 			TARGA = TARGA.substring(0,TARGA.length()-1);
 		}
+		break;	
 		case ('#'): {
 			if (TARGA.length() == 5) {
 				mezzo.TARGA = TARGA;
@@ -994,6 +996,34 @@ void inputTarga(char T) {
 		break;
 		default:  {
 			TARGA += String(T);
+			_delay_ms(20);
+		}
+		break;
+	}
+}
+
+void inputKM(char T) {
+	
+	switch (T) {
+		case ('N'): {
+			Serial.print("NIENTE");
+		}
+		break;		
+		case ('C'): {
+			if (KM.length() > 0)
+			KM = KM.substring(0,KM.length()-1);
+		}
+		break;	
+		case ('#'): {
+			if (KM.length() == 4) {
+				mezzo.KM = KM;
+				RaccoltaDati[4] = mezzo.KM;
+				avanzaStato(120);
+			}
+		}
+		break;
+		default:  {
+			KM += String(T);
 			_delay_ms(20);
 		}
 		break;
@@ -1043,6 +1073,7 @@ void loop() {
     case 1:
     { 
 		TARGA = "";
+		KM = "";
 			
 		righeDisplay[1] = " * AUTENTICAZIONE *";
 		righeDisplay[2] = "";
@@ -1087,14 +1118,12 @@ void loop() {
 		   displayLCD(righeDisplay,stato_procedura,100);   
       
            InizializzaEthernet();
-           // give the WIZ5500 a second to initialize...
+           // give the W5500 a second to initialize...
            _delay_ms(1000);
         }
                                   
-          // Effettua chiamata REST per validare CARD NFC
-          // Se la CARD è valida memorizza in memoria l'operazione e prosegui
-          // Altrimenti Memorizza in Memoria e Azzera la procedura. // DA IMPLEMENTARE
-     
+        // Effettua chiamata REST per validare CARD NFC
+       
         if (GetAteValidation(80,serverATE,clientATE,ATe)) 
         { 
 			RaccoltaDati[5] = "000";
@@ -1123,11 +1152,7 @@ void loop() {
     }
     break;
     case 2:
-    {   
-		//  	  disable_ETH();
-		//  	  _delay_ms(50);
-		//  	  enable_ETH();
-	   
+    {   	
 	  /*****************************************************************/
       // da commentare
       // Carburante = "D"; // Simulo Abilitazione Diesel
@@ -1162,7 +1187,7 @@ void loop() {
 	  if (TARGA.length() == 5) {
 		  mezzo.Carb = "X";
 		  mezzo.TARGA = TARGA;
-		  mezzo.KM = 0;
+		  mezzo.KM = "0";
 		  avanzaStato(TselDistributore); 
 	  }	  else
 	  {
@@ -1178,7 +1203,7 @@ void loop() {
       
 		  mezzo.Carb = mezzoString.substring(5);
 		  mezzo.TARGA = mezzoString.substring(0,5);
-		  mezzo.KM = 0;
+		  mezzo.KM = "0";
 
 		  Serial.println("TIPO CARBURANTE: " + mezzo.Carb);    
 		  Serial.println("TARGA: " + mezzo.TARGA);              
@@ -1194,11 +1219,12 @@ void loop() {
     break;
     case 4:
     { 
-    righeDisplay[1] =  "****** DISTRIBUTORE ******";
-    righeDisplay[2] =  "";
-    righeDisplay[3] = "**** SCEGLI ****";
 
-    displayLCD(righeDisplay,stato_procedura,100);
+      righeDisplay[1] =  "****** DISTRIBUTORE ******";
+      righeDisplay[2] =  "";
+      righeDisplay[3] = "**** SCEGLI ****";
+
+      displayLCD(righeDisplay,stato_procedura,100);
 
     // Verifica scelta distributore
     
@@ -1208,7 +1234,7 @@ void loop() {
         Rele_Abilitazione2(0,7); // chiudi relè
         StatoAttuale = "BENZINA";
 		RaccoltaDati[2] = mezzo.Carb;
-        avanzaStato(10);
+        avanzaStato(60);
       }
       else if (mezzo.Carb == "D")
       {
@@ -1216,7 +1242,7 @@ void loop() {
         Rele_Abilitazione1(0,7); // chiudi relè
         StatoAttuale = "GASOLIO";
 		RaccoltaDati[2] = mezzo.Carb;
-        avanzaStato(10);
+        avanzaStato(60);
       }                          
     }
     break;
@@ -1224,29 +1250,44 @@ void loop() {
     {             
       // VALIDA MEZZO CON WBSERVICES
 	  
-	  RaccoltaDati[4] = "1234";
+	 // RaccoltaDati[4] = "1234";
+	 /*****************************************************************/
+	 gpio.setCONFREG(0x3C);
+	 uint8_t c = gpio.Read_IP_REGISTER();
+	 char buf[8];
+	 itoa(c,buf,2);
+	 gpio.setCONFREG(0xC3);
+	 uint8_t r = gpio.Read_IP_REGISTER();
+	 char bufr[8];
+	 itoa(r,bufr,2);
+	 char ris[8];
+	 uint8_t z = (r ^ c);
+	 itoa(z,ris,2);
+	 char T = getCharKeypad(int(z));
+	 _delay_ms(20);
+	 /*****************************************************************/
+	 
+	 inputKM(T);
+	 
+	  righeDisplay[1] =  "****** KM ******";
+	  righeDisplay[2] = "KM:" + KM;
+	  righeDisplay[3] = "#:Conferma";
+	  displayLCD(righeDisplay,stato_procedura,10);
       
-      impulsi = 0;
-      
-      righeDisplay[1] = "**** Distributore ****";
-      righeDisplay[2] =  "";
-      righeDisplay[3] = "***** " + StatoAttuale + " *****";
-      
-      displayLCD(righeDisplay,stato_procedura,100);
-
-      avanzaStato(20);
+      impulsi = 0;  
     }
     break;
     case 6:
     { 
-    disable_ETH();
-    _delay_ms(2);
-    enable_ETH();
+	
+	  disable_ETH();
+	  _delay_ms(2);
+	  enable_ETH();
     
       double lt = impulsiToLitri(impulsi);      
       
       righeDisplay[1] = "LITRI :" + String(lt);
-      // righeDisplay[2] = "imp :" + String(impulsi);  
+      righeDisplay[2] = "imp :" + String(impulsi);  
       righeDisplay[3] = "Erogazione: " + StatoAttuale;
       
       displayLCD(righeDisplay,stato_procedura,10);   
@@ -1297,7 +1338,7 @@ void loop() {
         for (int k = 0;k<6;k++)
           Messaggio.concat(RaccoltaDati[k]+";");  
       
-	Messaggio.concat("SA1001");
+	Messaggio.concat(CodSede);
 	
     _delay_ms(1000);      
         
@@ -1317,7 +1358,7 @@ void loop() {
   disable_ETH();
   avanzaStato(TmaxSalvataggio);
    
-    /***********************************************************
+    /****************TRAMITE SOCKET TCP*******************************************
         //Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
         CompletoRifornimentoPerInvioDati(stato_procedura);
         
