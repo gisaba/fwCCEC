@@ -137,7 +137,8 @@ IPAddress subnet(255, 255, 0, 0); // SUBNET
 
 char serverATE[]  = "wbpate-test.dipvvf.it";
 char serverGAC[]  = "gacweb-test.dipvvf.it";
-char serverREST[] = "geoserver.sa.dipvvf.it";
+//char serverREST[] = "geoserver.sa.dipvvf.it";
+char serverREST[] = "ccec.sa.dipvvf.it";
 
 EthernetClient clientLOCAL;
 EthernetClient clientATE;
@@ -242,14 +243,14 @@ void pass(bool _status) {
 /************************************************************/
 
 void setup() {
-	
-	_delay_ms(100);
+  
+  _delay_ms(100);
 
    initSS_ETH();
    _delay_ms(5);
    disable_ETH();
    
-   // Serial.begin(9600);
+//   Serial.begin(9600);
    Serial.println(" inizio Setup ......");
  
   /*******************************************************************************************/
@@ -467,9 +468,9 @@ char getCharKeypad(int _ioexpanderByte)
       c = 3;
     } break;
     /****************************/
-	default: {		
-		return 'N';
-	} break;
+  default: {    
+    return 'N';
+  } break;
   }
   // _delay_ms(20);
   return MappaKeys[0,r][c];
@@ -483,6 +484,7 @@ void displayLCD(String righe[],int stato,int delay_lcd)                         
   //now.month(), now.day(), now.hour(), now.minute(), now.second());      // date/time with leading zeros     //
   //Serial.println(inputBuffer);                        // Display the current date/time    //
   //lcd.print(inputBuffer);
+  
   if (stato > 1)
     lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
   
@@ -522,9 +524,9 @@ String leggiTAG_Mezzo(bool scrivi)
       {
         uint8_t data[16];
         
-		// Se il parametro scrivi è true scriviamo sul blocco 4 del TAG        
+    // Se il parametro scrivi è true scriviamo sul blocco 4 del TAG        
         if (scrivi)
-        { memcpy(data, (const uint8_t[]){ '2', '6', '6', '7', '8', 'D',0,0,0,0,0,0,0,0,0,0 }, sizeof data); // 1000030442
+        { memcpy(data, (const uint8_t[]){ '2', '8', '5', '3', '0', 'D',0,0,0,0,0,0,0,0,0,0 }, sizeof data); // 1000030442
          success = nfc.mifareclassic_WriteDataBlock (4, data);
         }
          
@@ -596,14 +598,14 @@ String GetHTTPResponseCode(String HttpResp)
   Serial.println("VerificaHTTPResponse...");
   if (HttpResp.length() == HTTP_len_response){
     String CodHTTP = HttpResp.substring(HttpResp.length()-3);
-	pass(true);
-    return CodHTTP;	
+  pass(true);
+    return CodHTTP; 
   }
   else
   { 
-	pass(false); 
-	printLine(); 
-	return Cod_Conn_KO; 
+  pass(false); 
+  printLine(); 
+  return Cod_Conn_KO; 
   }
 }
 
@@ -616,8 +618,8 @@ uint8_t GetAteValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,Str
  Serial.print("Calling Webservice ATe ..............");
  
  if ( (ClientHTTP.connect(serverWEB, Port))) 
-  { 	   
-    strURLAPI = "GET /api/ATe/GetAssociazioneByRfidCode?rfidCode=" + ATeCode +"  HTTP/1.1\r\n";	
+  {      
+    strURLAPI = "GET /api/ATe/GetAssociazioneByRfidCode?rfidCode=" + ATeCode +"  HTTP/1.1\r\n"; 
     strURLAPI += "Host: wbpate-test.dipvvf.it";
     strURLAPI += "\r\n";
     strURLAPI += "Accept: application/json";
@@ -657,13 +659,13 @@ uint8_t GetAteValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,Str
       String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
       _delay_ms(80);      
     
-	  /****************** 
-	  lcd.clear();
+    /****************** 
+      lcd.clear();
       lcd.setCursor(0,2);
       lcd.print("COD HTTP:");
       lcd.print(rispostaGetTimbrature);
       *******************/
-	  
+    
       if (rispostaGetTimbrature == "200"){ valida = 1; pass(true);}
       _delay_ms(80);
     }
@@ -680,11 +682,11 @@ bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String 
  printTab(1);
  Serial.print("Call Webservice POST Erogazione ..............");
  
- if ( (ClientHTTP.connect(serverREST, Port)))  
+ if ( (ClientHTTP.connect(serverREST, Port)))  // Chiamata al Rest server 
   {        
         _delay_ms(100);
-        strURLAPI = "POST /api/erogazioni/ HTTP/1.1\r\n";
-        strURLAPI += "Host: geoserver.sa.dipvvf.it:5001";
+        strURLAPI = "POST /api/erogazioni/ HTTP/1.1\r\n";    
+        strURLAPI += "Host: ccec.sa.dipvvf.it:5001";    
         strURLAPI += "\r\n";
         strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
         strURLAPI += "\r\n";
@@ -692,15 +694,81 @@ bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String 
         strURLAPI += "\r\n";
         strURLAPI += "Accept: */*";
         strURLAPI += "\r\n";
-        //strURLAPI += "Content-Length: 43";
-		strURLAPI += "Content-Length: " + String(_erogazione.length()+21);
+        //strURLAPI += "Content-Length: 39";
+        strURLAPI += "Content-Length: " + String(_erogazione.length()+21);
         strURLAPI += "\r\n";
         strURLAPI += "\r\n";
-        strURLAPI += "{\r\n";        
+        strURLAPI += "{\r\n";               
         strURLAPI += "\"erogazione\":\""+_erogazione+"\"\r\n";
         strURLAPI += "}\r\n";
 
     Serial.println(strURLAPI);
+    
+    ClientHTTP.print(strURLAPI);
+  
+    _delay_ms(80);
+    ClientHTTP.println("Connection: close");
+    ClientHTTP.println();
+  }
+  else
+  {
+    lcd.clear();
+    lcd.setCursor(0,1);
+    lcd.print("Connessione Fallita.");
+    lcd.setCursor(0,3);
+    lcd.print("Verificare....");
+    _delay_ms(1000);
+  }
+
+  _delay_ms(100);
+
+  while (ClientHTTP.available()) {
+    char c = ClientHTTP.read();
+    RispostaHTTP = RispostaHTTP + c;
+    if (RispostaHTTP.length() == HTTP_len_response)
+    {
+      String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
+      _delay_ms(80);      
+    
+      if (rispostaGetTimbrature == "200"){ valida = true; pass(true);}
+      _delay_ms(80);
+    }
+  }
+  printLine();
+  _delay_ms(50);
+  
+  return valida;
+}
+
+
+bool PostErogazioneGAC(int Port,char serverREST[],EthernetClient ClientHTTP,String _erogazione)
+{
+ bool valida = false;
+ 
+ printLine();
+ printTab(1);
+ 
+ Serial.print("Call Webservice POST Erogazione ..............");
+ 
+ if ( (ClientHTTP.connect(serverREST, Port)))  // Chiamata al Rest server per interfacciamento al GAC
+  {        
+        _delay_ms(100);
+        strURLAPI = "POST /Rifornimento.php HTTP/1.1\r\n";
+        strURLAPI += "Host: ccec.sa.dipvvf.it";
+        strURLAPI += "\r\n";
+        strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
+        strURLAPI += "\r\n";
+        strURLAPI += "content-type: application/json";
+        strURLAPI += "\r\n";
+        strURLAPI += "Accept: */*";
+        strURLAPI += "\r\n";
+        //strURLAPI += "Content-Length: 39";
+        strURLAPI += "Content-Length: " + String(_erogazione.length()+21);
+        strURLAPI += "\r\n";
+        strURLAPI += "\r\n";
+        strURLAPI += _erogazione+"\"\r\n";
+        
+      Serial.println(strURLAPI);
     
     ClientHTTP.print(strURLAPI);
   
@@ -965,69 +1033,69 @@ void Azzera()
 }
 
 void inputTarga(char T) {
-	
-	switch (T) {
-		case ('N'): {
-			Serial.print("NIENTE");
-		}
-		break;
-		case ('A'): {
-			TARGA = "";
-			avanzaStato(TinputTarga);
-		}
-		break;	
-		case ('B'): {
-			String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-			_delay_ms(10);
-		}
-		break;	
-		case ('C'): {
-			if (TARGA.length() > 0)
-			TARGA = TARGA.substring(0,TARGA.length()-1);
-		}
-		break;	
-		case ('#'): {
-			if (TARGA.length() == 5) {
-				mezzo.TARGA = TARGA;
-				RaccoltaDati[1] = mezzo.TARGA;
-				avanzaStato(TinputTarga);
-			}
-		}
-		break;
-		default:  {
-			TARGA += String(T);
-			_delay_ms(20);
-		}
-		break;
-	}
+  
+  switch (T) {
+    case ('N'): {
+      Serial.print("NIENTE");
+    }
+    break;
+    case ('A'): {
+      TARGA = "";
+      avanzaStato(TinputTarga);
+    }
+    break;  
+    case ('B'): {
+      String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+      _delay_ms(10);
+    }
+    break;  
+    case ('C'): {
+      if (TARGA.length() > 0)
+      TARGA = TARGA.substring(0,TARGA.length()-1);
+    }
+    break;  
+    case ('#'): {
+      if (TARGA.length() == 5) {
+        mezzo.TARGA = TARGA;
+        RaccoltaDati[1] = mezzo.TARGA;
+        avanzaStato(TinputTarga);
+      }
+    }
+    break;
+    default:  {
+      TARGA += String(T);
+      _delay_ms(20);
+    }
+    break;
+  }
 }
 
 void inputKM(char T) {
-	
-	switch (T) {
-		case ('N'): {
-			Serial.print("NIENTE");
-		}
-		break;		
-		case ('C'): {
-			if (KM.length() > 0)
-			KM = KM.substring(0,KM.length()-1);
-		}
-		break;	
-		case ('#'): {
-			if (KM.length() == 4) {
-				mezzo.KM = KM;
-				RaccoltaDati[4] = mezzo.KM;
-				avanzaStato(120);
-			}
-		}
-		break;
-		default:  {
-			KM += String(T);
-			_delay_ms(20);
-		}
-		break;
-	}
+  
+  switch (T) {
+    case ('N'): {
+      Serial.print("NIENTE");
+    }
+    break;    
+    case ('C'): {
+      if (KM.length() > 0)
+      KM = KM.substring(0,KM.length()-1);
+    }
+    break;  
+    case ('#'): {
+      if (KM.length() == 4) {
+        mezzo.KM = KM;
+        RaccoltaDati[4] = mezzo.KM;
+        avanzaStato(120);
+      }
+    }
+    break;
+    default:  {
+      KM += String(T);
+      _delay_ms(20);
+    }
+    break;
+  }
 }
 
 /**************************LOOP PROCEDURA************************************/
@@ -1065,35 +1133,35 @@ void loop() {
       _delay_ms(2000);
       alreadyTimbrata = false;  
       
-	  enable_ETH();
-	  _delay_ms(1000);
+    enable_ETH();
+    _delay_ms(1000);
       stato_procedura++;
     }
     break;
     case 1:
     { 
-		TARGA = "";
-		KM = "";
-			
-		righeDisplay[1] = " * AUTENTICAZIONE *";
-		righeDisplay[2] = "";
-		righeDisplay[3] = "    Avvicina ATE  ";
+    TARGA = "";
+    KM = "";
+      
+    righeDisplay[1] = " * AUTENTICAZIONE *";
+    righeDisplay[2] = "";
+    righeDisplay[3] = "    Avvicina ATE  ";
     
-		displayLCD(righeDisplay,stato_procedura,100);     
+    displayLCD(righeDisplay,stato_procedura,100);     
       
       
-		/*****************************************
-		String ATe = "AABBCCDD";
-		RaccoltaDati[0] = ATe;
-		lcd.backlight();
-		lcd.display();
-		_delay_ms(10);
-		avanzaStato(TinputTarga);
-		/*****************************************/
+    /*****************************************
+    String ATe = "AABBCCDD";
+    RaccoltaDati[0] = ATe;
+    lcd.backlight();
+    lcd.display();
+    _delay_ms(10);
+    avanzaStato(TinputTarga);
+    /*****************************************/
 
-		/*****************************************************/
-		String ATe = "ERRORE";
-		if (!alreadyTimbrata) {ATe = GetCodeRfidATe(); Buzzer(2,100);}
+    /*****************************************************/
+    String ATe = "ERRORE";
+    if (!alreadyTimbrata) {ATe = GetCodeRfidATe(); Buzzer(2,100);}
             
         if ((ATe != "ERRORE") && (BIT_IS_CLEAR(PORTC,4)))
         { 
@@ -1103,19 +1171,21 @@ void loop() {
            Serial.print("***************************************************************");
            Serial.println("Riconoscimento Tessera .............");
                      
-           RaccoltaDati[0] = ATe;
-		   RaccoltaDati[5] = "000";
+           // RaccoltaDati[0] = ATe;
+       RaccoltaDati[0] = "DD92743A";
+       
+       RaccoltaDati[5] = "000";
            
            lcd.backlight();
            lcd.display();          
            _delay_ms(10);               
-		   
-		   righeDisplay[1] = "  RICONOSCIMENTO ";
-		   righeDisplay[2] = ".....In Corso.....";
-		   //righeDisplay[3] = "   Rfid: " + ATe;
-		   righeDisplay[3] = "Attendere.........";
-		       
-		   displayLCD(righeDisplay,stato_procedura,100);   
+       
+       righeDisplay[1] = "  RICONOSCIMENTO ";
+       righeDisplay[2] = ".....In Corso.....";
+       //righeDisplay[3] = "   Rfid: " + ATe;
+       righeDisplay[3] = "Attendere.........";
+           
+       displayLCD(righeDisplay,stato_procedura,100);   
       
            InizializzaEthernet();
            // give the W5500 a second to initialize...
@@ -1126,95 +1196,96 @@ void loop() {
        
         if (GetAteValidation(80,serverATE,clientATE,ATe)) 
         { 
-			RaccoltaDati[5] = "000";
+      RaccoltaDati[5] = "000";
             SET_BIT(PORTC,PC4);
-            Buzzer(1,400); 		
-			righeDisplay[1] =  "****** TARGA ******";
-			righeDisplay[2] =  "";
-			righeDisplay[3] = "TARGA:";            
-            displayLCD(righeDisplay,stato_procedura,10);   			
-			_delay_ms(50);			
-		    avanzaStato(TinputTarga); 
+            Buzzer(1,400);    
+      righeDisplay[1] =  "****** TARGA ******";
+      righeDisplay[2] =  "";
+      righeDisplay[3] = "TARGA:";            
+            displayLCD(righeDisplay,stato_procedura,10);        
+      _delay_ms(50);      
+      avanzaStato(TinputTarga); 
           } 
          else 
           { 
-			RaccoltaDati[5] = "111";
+      RaccoltaDati[5] = "111";
             Buzzer(3,200);
-			righeDisplay[1] =  "****** TARGA ******";			
-			righeDisplay[2] = "TARGA:";
-			righeDisplay[3] = "#:Conferma A:Avanti";
+      righeDisplay[1] =  "****** TARGA ******";     
+      righeDisplay[2] = "TARGA:";
+      righeDisplay[3] = "#:Conferma A:Avanti";
             displayLCD(righeDisplay,stato_procedura,10);       
-			_delay_ms(50);    
+      _delay_ms(50);    
             avanzaStato(TinputTarga);
             //Azzera();
            }   
-          /*****************************************************/		  		  
+          /*****************************************************/           
     }
     break;
     case 2:
-    {   	
-	  /*****************************************************************/
+    {     
+    /*****************************************************************/
       // da commentare
       // Carburante = "D"; // Simulo Abilitazione Diesel
       // da commentare
       // Carburante = "B"; // Simulo Abilitazione Benzina
-	  /*****************************************************************/
-	  gpio.setCONFREG(0x3C);
-	  uint8_t c = gpio.Read_IP_REGISTER();
-	  char buf[8];
-	  itoa(c,buf,2);
-	  gpio.setCONFREG(0xC3);
-	  uint8_t r = gpio.Read_IP_REGISTER();
-	  char bufr[8];
-	  itoa(r,bufr,2);
-	  char ris[8];
-	  uint8_t z = (r ^ c);
-	  itoa(z,ris,2);
-	  char T = getCharKeypad(int(z));
-	  _delay_ms(20);
-	  /*****************************************************************/
-	  
-	  inputTarga(T); 
-	  
-	  righeDisplay[1] =  "****** TARGA ******";
-	  righeDisplay[2] = "TARGA:" + TARGA;
-	  righeDisplay[3] = "#:Conferma A:Usa TAG";
-	  displayLCD(righeDisplay,stato_procedura,10); 
+    /*****************************************************************/
+    gpio.setCONFREG(0x3C);
+    uint8_t c = gpio.Read_IP_REGISTER();
+    char buf[8];
+    itoa(c,buf,2);
+    gpio.setCONFREG(0xC3);
+    uint8_t r = gpio.Read_IP_REGISTER();
+    char bufr[8];
+    itoa(r,bufr,2);
+    char ris[8];
+    uint8_t z = (r ^ c);
+    itoa(z,ris,2);
+    char T = getCharKeypad(int(z));
+    _delay_ms(20);
+    /*****************************************************************/
+    
+    inputTarga(T); 
+    
+    righeDisplay[1] =  "****** TARGA ******";
+    righeDisplay[2] = "TARGA:" + TARGA;
+    righeDisplay[3] = "#:Conferma A:Usa TAG";
+    displayLCD(righeDisplay,stato_procedura,10); 
     }
     break;
     case 3:
     {  
-	  if (TARGA.length() == 5) {
-		  mezzo.Carb = "X";
-		  mezzo.TARGA = TARGA;
-		  mezzo.KM = "0";
-		  avanzaStato(TselDistributore); 
-	  }	  else
-	  {
-		  righeDisplay[1] =  "AVVICINA TAG MEZZO";
-		  righeDisplay[2] =  "";
-		  righeDisplay[3] = "TARGA: "+  mezzo.TARGA;
-		  displayLCD(righeDisplay,stato_procedura,10);
-				
-		  String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-		  _delay_ms(10);
+    if (TARGA.length() == 5) {
+      mezzo.Carb = "X";
+      mezzo.TARGA = TARGA;
+      mezzo.KM = "0";
+      avanzaStato(TselDistributore); 
+    }   else
+    {
+      righeDisplay[1] =  "AVVICINA TAG MEZZO";
+      righeDisplay[2] =  "";
+      righeDisplay[3] = "TARGA: "+  mezzo.TARGA;
+      displayLCD(righeDisplay,stato_procedura,10);
+        
+      //String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+    String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+      _delay_ms(10);
 
-		  Serial.println(mezzoString);
+      Serial.println(mezzoString);
       
-		  mezzo.Carb = mezzoString.substring(5);
-		  mezzo.TARGA = mezzoString.substring(0,5);
-		  mezzo.KM = "0";
+      mezzo.Carb = mezzoString.substring(5);
+      mezzo.TARGA = mezzoString.substring(0,5);
+      mezzo.KM = "0";
 
-		  Serial.println("TIPO CARBURANTE: " + mezzo.Carb);    
-		  Serial.println("TARGA: " + mezzo.TARGA);              
+      Serial.println("TIPO CARBURANTE: " + mezzo.Carb);    
+      Serial.println("TARGA: " + mezzo.TARGA);              
 
-		  Carburante = mezzo.Carb;                 
-		  if ((mezzo.Carb == "B") || (mezzo.Carb == "D")) {
-			RaccoltaDati[1] = mezzo.TARGA;
-			RaccoltaDati[2] = mezzo.Carb;
-			avanzaStato(TselDistributore); 
-		  }
-	  }
+      Carburante = mezzo.Carb;                 
+      if ((mezzo.Carb == "B") || (mezzo.Carb == "D")) {
+      RaccoltaDati[1] = mezzo.TARGA;
+      RaccoltaDati[2] = mezzo.Carb;
+      avanzaStato(TselDistributore); 
+      }
+    }
     }
     break;
     case 4:
@@ -1233,7 +1304,7 @@ void loop() {
         abilitaPulser('B');
         Rele_Abilitazione2(0,7); // chiudi relè
         StatoAttuale = "BENZINA";
-		RaccoltaDati[2] = mezzo.Carb;
+    RaccoltaDati[2] = mezzo.Carb;
         avanzaStato(60);
       }
       else if (mezzo.Carb == "D")
@@ -1241,7 +1312,7 @@ void loop() {
         abilitaPulser('D');
         Rele_Abilitazione1(0,7); // chiudi relè
         StatoAttuale = "GASOLIO";
-		RaccoltaDati[2] = mezzo.Carb;
+    RaccoltaDati[2] = mezzo.Carb;
         avanzaStato(60);
       }                          
     }
@@ -1249,40 +1320,40 @@ void loop() {
     case 5:
     {             
       // VALIDA MEZZO CON WBSERVICES
-	  
-	 // RaccoltaDati[4] = "1234";
-	 /*****************************************************************/
-	 gpio.setCONFREG(0x3C);
-	 uint8_t c = gpio.Read_IP_REGISTER();
-	 char buf[8];
-	 itoa(c,buf,2);
-	 gpio.setCONFREG(0xC3);
-	 uint8_t r = gpio.Read_IP_REGISTER();
-	 char bufr[8];
-	 itoa(r,bufr,2);
-	 char ris[8];
-	 uint8_t z = (r ^ c);
-	 itoa(z,ris,2);
-	 char T = getCharKeypad(int(z));
-	 _delay_ms(20);
-	 /*****************************************************************/
-	 
-	 inputKM(T);
-	 
-	  righeDisplay[1] =  "****** KM ******";
-	  righeDisplay[2] = "KM:" + KM;
-	  righeDisplay[3] = "#:Conferma";
-	  displayLCD(righeDisplay,stato_procedura,10);
+    
+   // RaccoltaDati[4] = "1234";
+   /*****************************************************************/
+   gpio.setCONFREG(0x3C);
+   uint8_t c = gpio.Read_IP_REGISTER();
+   char buf[8];
+   itoa(c,buf,2);
+   gpio.setCONFREG(0xC3);
+   uint8_t r = gpio.Read_IP_REGISTER();
+   char bufr[8];
+   itoa(r,bufr,2);
+   char ris[8];
+   uint8_t z = (r ^ c);
+   itoa(z,ris,2);
+   char T = getCharKeypad(int(z));
+   _delay_ms(20);
+   /*****************************************************************/
+   
+   inputKM(T);
+   
+    righeDisplay[1] =  "****** KM ******";
+    righeDisplay[2] = "KM:" + KM;
+    righeDisplay[3] = "#:Conferma";
+    displayLCD(righeDisplay,stato_procedura,10);
       
       impulsi = 0;  
     }
     break;
     case 6:
     { 
-	
-	  disable_ETH();
-	  _delay_ms(2);
-	  enable_ETH();
+  
+    disable_ETH();
+    _delay_ms(2);
+    enable_ETH();
     
       double lt = impulsiToLitri(impulsi);      
       
@@ -1338,11 +1409,14 @@ void loop() {
         for (int k = 0;k<6;k++)
           Messaggio.concat(RaccoltaDati[k]+";");  
       
-	Messaggio.concat(CodSede);
-	
+  Messaggio.concat(CodSede);
+  
+  // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
+  
     _delay_ms(1000);      
         
-    if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
+    //if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
+   if (PostErogazioneGAC(80,serverREST,clientLOCAL,Messaggio))
     {
       disable_ETH();
     
@@ -1422,11 +1496,11 @@ Esempio
 ISR(PCINT0_vect) {
        if (PINA & _BV(PA5)){
               impulsi++;
-			  _delay_ms(2.6); // Impostato per 200 Hz di pulser (Periodo 5 ms)
+        _delay_ms(2.6); // Impostato per 200 Hz di pulser (Periodo 5 ms)
        }
         if (PINA & _BV(PA6)){
                impulsi++;
- 			  _delay_ms(4);
+        _delay_ms(4);
         }  
 }
 
@@ -1444,7 +1518,7 @@ ISR(PCINT3_vect) {
         abilitaPulser('B');
         Rele_Abilitazione2(0,7); // chiudi relè
         Carburante = "B";
-		RaccoltaDati[2] = Carburante;
+    RaccoltaDati[2] = Carburante;
         StatoAttuale = "BENZINA";       
         avanzaStato(10);                            
         intConsecutivePresses = 0;                    // and reset press counts
@@ -1467,7 +1541,7 @@ ISR(PCINT3_vect) {
         abilitaPulser('D');
         Rele_Abilitazione1(0,7); // chiudi relè
         Carburante = "D";
-		RaccoltaDati[2] = Carburante;
+    RaccoltaDati[2] = Carburante;
         StatoAttuale = "GASOLIO";
         avanzaStato(10);
         intConsecutivePresses = 0;                    // and reset press counts
