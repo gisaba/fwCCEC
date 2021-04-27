@@ -485,8 +485,8 @@ void displayLCD(String righe[],int stato,int delay_lcd)                         
   //Serial.println(inputBuffer);                        // Display the current date/time    //
   //lcd.print(inputBuffer);
   
-  if (stato > 1)
-    lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
+  //if (stato > 1)
+    // lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
   
   lcd.print((char)1);  // STAMPA LA CLESSIDRA
   lcd.setCursor(0,1);
@@ -500,6 +500,7 @@ void displayLCD(String righe[],int stato,int delay_lcd)                         
 }
 
 void avanzaStato(unsigned long p_timer) {
+  displayLCD(righeDisplay,stato_procedura,10);
   Timer = p_timer;
   UltimoPassaggioStato = nowTimer.secondstime();
   stato_procedura++;
@@ -1041,30 +1042,45 @@ void inputTarga(char T) {
     break;
     case ('A'): {
       TARGA = "";
+	  righeDisplay[1] =  "AVVICINA TAG MEZZO"; // Set display per stato successivo
+	  righeDisplay[2] =  "";
+	  righeDisplay[3] = "";
       avanzaStato(TinputTarga);
     }
     break;  
     case ('B'): {
-      String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+      String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+	  //String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
       _delay_ms(10);
     }
     break;  
     case ('C'): {
-      if (TARGA.length() > 0)
-      TARGA = TARGA.substring(0,TARGA.length()-1);
+      if (TARGA.length() > 0) {		
+		TARGA = TARGA.substring(0,TARGA.length()-1);
+		righeDisplay[1] =  "****** TARGA ******";
+		righeDisplay[2] = "TARGA:" + TARGA;
+		righeDisplay[3] = "#:Conferma A:Usa TAG";
+		displayLCD(righeDisplay,stato_procedura,10);
+	  }
     }
     break;  
     case ('#'): {
       if (TARGA.length() == 5) {
         mezzo.TARGA = TARGA;
         RaccoltaDati[1] = mezzo.TARGA;
+				
+			
         avanzaStato(TinputTarga);
       }
     }
     break;
     default:  {
       TARGA += String(T);
-      _delay_ms(20);
+      // _delay_ms(20);
+	   righeDisplay[1] =  "****** TARGA ******";
+	   righeDisplay[2] = "TARGA:" + TARGA;
+	   righeDisplay[3] = "#:Conferma A:Usa TAG";
+	   displayLCD(righeDisplay,stato_procedura,10);
     }
     break;
   }
@@ -1080,19 +1096,30 @@ void inputKM(char T) {
     case ('C'): {
       if (KM.length() > 0)
       KM = KM.substring(0,KM.length()-1);
+	  righeDisplay[1] =  "****** KM ******";
+	  righeDisplay[2] = "KM:" + KM;
+	  righeDisplay[3] = "#:Conferma";
+	  displayLCD(righeDisplay,stato_procedura,10);
     }
     break;  
     case ('#'): {
       if (KM.length() == 4) {
         mezzo.KM = KM;
         RaccoltaDati[4] = mezzo.KM;
+		righeDisplay[1] = "LITRI : 0.00";
+		righeDisplay[2] = "imp :" + String(impulsi);
+		righeDisplay[3] = "Erogazione: " + StatoAttuale;
         avanzaStato(120);
       }
     }
     break;
     default:  {
       KM += String(T);
-      _delay_ms(20);
+      //_delay_ms(20);
+	  righeDisplay[1] =  "****** KM ******";
+	  righeDisplay[2] = "KM:" + KM;
+	  righeDisplay[3] = "#:Conferma";
+	  displayLCD(righeDisplay,stato_procedura,10);
     }
     break;
   }
@@ -1116,11 +1143,10 @@ void loop() {
     break;
     case -1:
     {             
-    abilitaPulsanti();
-    _delay_ms(20);
-    abilitaContattiPistola();
-    
-    stato_procedura++;
+		abilitaPulsanti();
+		_delay_ms(20);
+		abilitaContattiPistola();    
+		stato_procedura++;
     }
     break;
     case 0:
@@ -1129,246 +1155,279 @@ void loop() {
       righeDisplay[2] =  "";
       righeDisplay[3] =  "";
           
-      displayLCD(righeDisplay,stato_procedura,100);
+      //displayLCD(righeDisplay,stato_procedura,100);
       _delay_ms(2000);
       alreadyTimbrata = false;  
       
-    enable_ETH();
-    _delay_ms(1000);
+	  enable_ETH();
+	  
+	  /************************************************/
+	  righeDisplay[1] = " * AUTENTICAZIONE *";
+	  righeDisplay[2] = "";
+	  righeDisplay[3] = "    Avvicina ATE  ";
+	  
+	  displayLCD(righeDisplay,stato_procedura,100);
+	  /************************************************/
+      _delay_ms(1000);
       stato_procedura++;
     }
     break;
     case 1:
     { 
-    TARGA = "";
-    KM = "";
-      
-    righeDisplay[1] = " * AUTENTICAZIONE *";
-    righeDisplay[2] = "";
-    righeDisplay[3] = "    Avvicina ATE  ";
-    
-    displayLCD(righeDisplay,stato_procedura,100);     
-      
-      
-    /*****************************************
-    String ATe = "AABBCCDD";
-    RaccoltaDati[0] = ATe;
-    lcd.backlight();
-    lcd.display();
-    _delay_ms(10);
-    avanzaStato(TinputTarga);
-    /*****************************************/
+		TARGA = "";
+		KM = "";
+           
+		/*****************************************
+		String ATe = "AABBCCDD";
+		RaccoltaDati[0] = ATe;
+		lcd.backlight();
+		lcd.display();
+		_delay_ms(10);
+		avanzaStato(TinputTarga);
+		/*****************************************/
 
-    /*****************************************************/
-    String ATe = "ERRORE";
-    if (!alreadyTimbrata) {ATe = GetCodeRfidATe(); Buzzer(2,100);}
+		/*****************************************************/
+		String ATe = "ERRORE";
+		if (!alreadyTimbrata) {ATe = GetCodeRfidATe(); Buzzer(2,100);}
             
-        if ((ATe != "ERRORE") && (BIT_IS_CLEAR(PORTC,4)))
-        { 
-           Serial.println("");
-           Serial.print("***************************************************************");
-           Serial.println(" Tessera ID : " + ATe);
-           Serial.print("***************************************************************");
-           Serial.println("Riconoscimento Tessera .............");
+			if ((ATe != "ERRORE") && (BIT_IS_CLEAR(PORTC,4)))
+			{ 
+			   Serial.println("");
+			   Serial.print("***************************************************************");
+			   Serial.println(" Tessera ID : " + ATe);
+			   Serial.print("***************************************************************");
+			   Serial.println("Riconoscimento Tessera .............");
                      
-           // RaccoltaDati[0] = ATe;
-       RaccoltaDati[0] = "DD92743A";
-       
-       RaccoltaDati[5] = "000";
+			   // RaccoltaDati[0] = ATe;
+				RaccoltaDati[0] = "DD92743A";     
+				RaccoltaDati[5] = "000";
            
-           lcd.backlight();
-           lcd.display();          
-           _delay_ms(10);               
+				lcd.backlight();
+				lcd.display();          
+				_delay_ms(10);               
        
-       righeDisplay[1] = "  RICONOSCIMENTO ";
-       righeDisplay[2] = ".....In Corso.....";
-       //righeDisplay[3] = "   Rfid: " + ATe;
-       righeDisplay[3] = "Attendere.........";
+				righeDisplay[1] = "  RICONOSCIMENTO ";
+				righeDisplay[2] = ".....In Corso.....";
+				//righeDisplay[3] = "   Rfid: " + ATe;
+				righeDisplay[3] = "Attendere.........";
            
-       displayLCD(righeDisplay,stato_procedura,100);   
+				displayLCD(righeDisplay,stato_procedura,100);   
       
-           InizializzaEthernet();
-           // give the W5500 a second to initialize...
-           _delay_ms(1000);
-        }
+				InizializzaEthernet();
+           
+				_delay_ms(1000); // tempo per inizializzare la ethernet
+			}
                                   
-        // Effettua chiamata REST per validare CARD NFC
+			// Effettua chiamata REST per validare CARD NFC
        
-        if (GetAteValidation(80,serverATE,clientATE,ATe)) 
-        { 
-      RaccoltaDati[5] = "000";
-            SET_BIT(PORTC,PC4);
-            Buzzer(1,400);    
-      righeDisplay[1] =  "****** TARGA ******";
-      righeDisplay[2] =  "";
-      righeDisplay[3] = "TARGA:";            
-            displayLCD(righeDisplay,stato_procedura,10);        
-      _delay_ms(50);      
-      avanzaStato(TinputTarga); 
-          } 
-         else 
-          { 
-      RaccoltaDati[5] = "111";
-            Buzzer(3,200);
-      righeDisplay[1] =  "****** TARGA ******";     
-      righeDisplay[2] = "TARGA:";
-      righeDisplay[3] = "#:Conferma A:Avanti";
-            displayLCD(righeDisplay,stato_procedura,10);       
-      _delay_ms(50);    
-            avanzaStato(TinputTarga);
-            //Azzera();
-           }   
-          /*****************************************************/           
+		   righeDisplay[1] =  "****** TARGA ******";
+		   righeDisplay[2] = "TARGA:";
+		   righeDisplay[3] = "#:Conferma A:Avanti";
+	   
+			if (1) //(GetAteValidation(80,serverATE,clientATE,ATe)) 
+			{ 
+				RaccoltaDati[5] = "000";
+				SET_BIT(PORTC,PC4);
+				Buzzer(1,400);    
+				//displayLCD(righeDisplay,stato_procedura,10);        
+				_delay_ms(50);      
+				avanzaStato(TinputTarga); 
+			} 
+			else 
+			{ 
+				RaccoltaDati[5] = "111";
+				Buzzer(3,200);			
+				//displayLCD(righeDisplay,stato_procedura,10);       
+				_delay_ms(50);    
+				avanzaStato(TinputTarga);
+				//Azzera();
+			}          
     }
     break;
     case 2:
-    {     
-    /*****************************************************************/
-      // da commentare
-      // Carburante = "D"; // Simulo Abilitazione Diesel
-      // da commentare
-      // Carburante = "B"; // Simulo Abilitazione Benzina
-    /*****************************************************************/
-    gpio.setCONFREG(0x3C);
-    uint8_t c = gpio.Read_IP_REGISTER();
-    char buf[8];
-    itoa(c,buf,2);
-    gpio.setCONFREG(0xC3);
-    uint8_t r = gpio.Read_IP_REGISTER();
-    char bufr[8];
-    itoa(r,bufr,2);
-    char ris[8];
-    uint8_t z = (r ^ c);
-    itoa(z,ris,2);
-    char T = getCharKeypad(int(z));
-    _delay_ms(20);
-    /*****************************************************************/
+    {   
+		lcd.setCursor(0,0);
+		lcd.print((char)1);  // STAMPA LA CLESSIDRA
+		lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
+		
+		/*****************************************************************/
+		  // da commentare
+		  // Carburante = "D"; // Simulo Abilitazione Diesel
+		  // da commentare
+		  // Carburante = "B"; // Simulo Abilitazione Benzina
+		/*****************************************************************/
+		gpio.setCONFREG(0x3C);
+		uint8_t c = gpio.Read_IP_REGISTER();
+		char buf[8];
+		itoa(c,buf,2);
+		gpio.setCONFREG(0xC3);
+		uint8_t r = gpio.Read_IP_REGISTER();
+		char bufr[8];
+		itoa(r,bufr,2);
+		char ris[8];
+		uint8_t z = (r ^ c);
+		itoa(z,ris,2);
+		char T = getCharKeypad(int(z));
+		_delay_ms(20);
+		/*****************************************************************/
     
-    inputTarga(T); 
+		inputTarga(T); 
     
-    righeDisplay[1] =  "****** TARGA ******";
-    righeDisplay[2] = "TARGA:" + TARGA;
-    righeDisplay[3] = "#:Conferma A:Usa TAG";
-    displayLCD(righeDisplay,stato_procedura,10); 
+	//     righeDisplay[1] =  "****** TARGA ******";
+	//     righeDisplay[2] = "TARGA:" + TARGA;
+	//     righeDisplay[3] = "#:Conferma A:Usa TAG";
+	//    displayLCD(righeDisplay,stato_procedura,10); 
     }
     break;
     case 3:
     {  
-    if (TARGA.length() == 5) {
-      mezzo.Carb = "X";
-      mezzo.TARGA = TARGA;
-      mezzo.KM = "0";
-      avanzaStato(TselDistributore); 
-    }   else
-    {
-      righeDisplay[1] =  "AVVICINA TAG MEZZO";
-      righeDisplay[2] =  "";
-      righeDisplay[3] = "TARGA: "+  mezzo.TARGA;
-      displayLCD(righeDisplay,stato_procedura,10);
+		lcd.setCursor(0,0);
+		lcd.print((char)1);  // STAMPA LA CLESSIDRA
+		lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
+		
+		if (TARGA.length() == 5) 
+		{
+		  mezzo.Carb = "X";
+		  mezzo.TARGA = TARGA;
+		  mezzo.KM = "0";
+
+		  righeDisplay[1] =  "****** DISTRIBUTORE ******";
+		  righeDisplay[2] =  "";
+		  righeDisplay[3] = "**** SCEGLI ****";
+
+		  avanzaStato(TselDistributore); 
+		} 
+		else 
+		{
+// 		  righeDisplay[1] =  "AVVICINA TAG MEZZO";
+// 		  righeDisplay[2] =  "";
+// 		  righeDisplay[3] = "";
         
-      //String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-    String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-      _delay_ms(10);
+		  //String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+		  String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+		  _delay_ms(10);
 
-      Serial.println(mezzoString);
+		  Serial.println(mezzoString);
       
-      mezzo.Carb = mezzoString.substring(5);
-      mezzo.TARGA = mezzoString.substring(0,5);
-      mezzo.KM = "0";
+		  mezzo.Carb = mezzoString.substring(5);
+		  mezzo.TARGA = mezzoString.substring(0,5);
+		  mezzo.KM = "0";
 
-      Serial.println("TIPO CARBURANTE: " + mezzo.Carb);    
-      Serial.println("TARGA: " + mezzo.TARGA);              
+		  Serial.println("TIPO CARBURANTE: " + mezzo.Carb);    
+		  Serial.println("TARGA: " + mezzo.TARGA);              
 
-      Carburante = mezzo.Carb;                 
-      if ((mezzo.Carb == "B") || (mezzo.Carb == "D")) {
-      RaccoltaDati[1] = mezzo.TARGA;
-      RaccoltaDati[2] = mezzo.Carb;
-      avanzaStato(TselDistributore); 
-      }
-    }
+		  Carburante = mezzo.Carb;                 
+		  if ((mezzo.Carb == "B") || (mezzo.Carb == "D")) {
+			RaccoltaDati[1] = mezzo.TARGA;
+			RaccoltaDati[2] = mezzo.Carb;
+			righeDisplay[3] = "TARGA: "+  mezzo.TARGA;
+			displayLCD(righeDisplay,stato_procedura,10);
+			_delay_ms(500);
+			avanzaStato(TselDistributore); 
+		 }	
+	   }
     }
     break;
     case 4:
-    { 
+    { 	
+       righeDisplay[1] =  "****** DISTRIBUTORE ******";
+       righeDisplay[2] =  "";
+       righeDisplay[3] = "**** SCEGLI ****";
 
-      righeDisplay[1] =  "****** DISTRIBUTORE ******";
-      righeDisplay[2] =  "";
-      righeDisplay[3] = "**** SCEGLI ****";
+		//displayLCD(righeDisplay,stato_procedura,100);
 
-      displayLCD(righeDisplay,stato_procedura,100);
-
-    // Verifica scelta distributore
+		// Verifica scelta distributore
     
-      if (mezzo.Carb == "B")
-      {
-        abilitaPulser('B');
-        Rele_Abilitazione2(0,7); // chiudi relè
-        StatoAttuale = "BENZINA";
-    RaccoltaDati[2] = mezzo.Carb;
-        avanzaStato(60);
-      }
-      else if (mezzo.Carb == "D")
-      {
-        abilitaPulser('D');
-        Rele_Abilitazione1(0,7); // chiudi relè
-        StatoAttuale = "GASOLIO";
-    RaccoltaDati[2] = mezzo.Carb;
-        avanzaStato(60);
-      }                          
+		if (mezzo.Carb == "B")
+		{
+			abilitaPulser('B');
+			Rele_Abilitazione2(0,7); // chiudi relè
+			StatoAttuale = "BENZINA";
+			RaccoltaDati[2] = mezzo.Carb;
+	 		
+			righeDisplay[1] =  "****** KM ******";
+	 		righeDisplay[2] = "KM:" + KM;
+	 		righeDisplay[3] = "#:Conferma";	 		
+			avanzaStato(60);
+		 }
+		else if (mezzo.Carb == "D")
+		{
+			abilitaPulser('D');
+			Rele_Abilitazione1(0,7); // chiudi relè
+			StatoAttuale = "GASOLIO";
+			RaccoltaDati[2] = mezzo.Carb;
+			
+			righeDisplay[1] =  "****** KM ******";
+			righeDisplay[2] = "KM:" + KM;
+			righeDisplay[3] = "#:Conferma";
+			avanzaStato(60);
+		}                          
     }
     break;
     case 5:
     {             
-      // VALIDA MEZZO CON WBSERVICES
-    
-   // RaccoltaDati[4] = "1234";
-   /*****************************************************************/
-   gpio.setCONFREG(0x3C);
-   uint8_t c = gpio.Read_IP_REGISTER();
-   char buf[8];
-   itoa(c,buf,2);
-   gpio.setCONFREG(0xC3);
-   uint8_t r = gpio.Read_IP_REGISTER();
-   char bufr[8];
-   itoa(r,bufr,2);
-   char ris[8];
-   uint8_t z = (r ^ c);
-   itoa(z,ris,2);
-   char T = getCharKeypad(int(z));
-   _delay_ms(20);
-   /*****************************************************************/
+		lcd.setCursor(0,0);
+		lcd.print((char)1);  // STAMPA LA CLESSIDRA
+		lcd.print("Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
+
+	   // RaccoltaDati[4] = "1234";
+	   /*****************************************************************/
+	   gpio.setCONFREG(0x3C);
+	   uint8_t c = gpio.Read_IP_REGISTER();
+	   char buf[8];
+	   itoa(c,buf,2);
+	   gpio.setCONFREG(0xC3);
+	   uint8_t r = gpio.Read_IP_REGISTER();
+	   char bufr[8];
+	   itoa(r,bufr,2);
+	   char ris[8];
+	   uint8_t z = (r ^ c);
+	   itoa(z,ris,2);
+	   char T = getCharKeypad(int(z));
+	   _delay_ms(20);
+	   /*****************************************************************/
    
-   inputKM(T);
+	   inputKM(T);
    
-    righeDisplay[1] =  "****** KM ******";
-    righeDisplay[2] = "KM:" + KM;
-    righeDisplay[3] = "#:Conferma";
-    displayLCD(righeDisplay,stato_procedura,10);
+// 		righeDisplay[1] =  "****** KM ******";
+// 		righeDisplay[2] = "KM:" + KM;
+// 		righeDisplay[3] = "#:Conferma";
+// 		displayLCD(righeDisplay,stato_procedura,10);
       
-      impulsi = 0;  
+	    impulsi = 0;
     }
     break;
     case 6:
     { 
+	   lcd.setCursor(0,0);
+	   lcd.print((char)1);  // STAMPA LA CLESSIDRA
+	   lcd.print("  Tempo: " + String((UltimoPassaggioStato+Timer-secs-1))+ " sec ");
   
-    disable_ETH();
-    _delay_ms(2);
-    enable_ETH();
+	   disable_ETH();
+	   _delay_ms(2);
+	   enable_ETH();
     
-      double lt = impulsiToLitri(impulsi);      
+       double lt = impulsiToLitri(impulsi);      
       
-      righeDisplay[1] = "LITRI :" + String(lt);
-      righeDisplay[2] = "imp :" + String(impulsi);  
-      righeDisplay[3] = "Erogazione: " + StatoAttuale;
+       righeDisplay[1] = "LITRI :" + String(lt);
+       righeDisplay[2] = "imp :" + String(impulsi);  
+       righeDisplay[3] = "Erogazione: " + StatoAttuale;
+	   
+	   
+	   lcd.setCursor(0,1);
+	   lcd.print(righeDisplay[1]);
+	   lcd.setCursor(0,2);
+	   lcd.print(righeDisplay[2]);
+	   lcd.setCursor(0,3);
+	   lcd.print(righeDisplay[3]);
       
-      displayLCD(righeDisplay,stato_procedura,10);   
+      // displayLCD(righeDisplay,stato_procedura,10);   
 
       /* CONTATTO PISTOLA DIESEL */
       
       if ((PINA & _BV(PA1)) && (Carburante == "D"))
       {       
-        RaccoltaDati[3] = String(lt);
-        
+        RaccoltaDati[3] = String(lt);        
         StatoAttuale = "STOP EROGAZIONE";
         Rele_Abilitazione2(1,7); //  apri relè
         Rele_Abilitazione1(1,7); //  apri relè  
@@ -1409,51 +1468,48 @@ void loop() {
         for (int k = 0;k<6;k++)
           Messaggio.concat(RaccoltaDati[k]+";");  
       
-  Messaggio.concat(CodSede);
+		Messaggio.concat(CodSede);
   
-  // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
+		// Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
   
-    _delay_ms(1000);      
+		_delay_ms(1000);      
         
-    //if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
-   if (PostErogazioneGAC(80,serverREST,clientLOCAL,Messaggio))
-    {
-      disable_ETH();
+		//if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
+		if (PostErogazioneGAC(80,serverREST,clientLOCAL,Messaggio))
+		{
+		  disable_ETH();    
+		  righeDisplay[1] = "";
+		  righeDisplay[2] = " Dati Inviati ";
+		  righeDisplay[3] =  "";    
+		  displayLCD(righeDisplay,stato_procedura,100);    
+		  _delay_ms(20);
+		}
     
-      righeDisplay[1] = "";
-      righeDisplay[2] = " Dati Inviati ";
-      righeDisplay[3] =  "";
-    
-      displayLCD(righeDisplay,stato_procedura,100);
-    
-      _delay_ms(20);
-    }
-    
-  disable_ETH();
-  avanzaStato(TmaxSalvataggio);
+		disable_ETH();
+		avanzaStato(TmaxSalvataggio);
    
-    /****************TRAMITE SOCKET TCP*******************************************
-        //Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
-        CompletoRifornimentoPerInvioDati(stato_procedura);
+		/****************TRAMITE SOCKET TCP*******************************************
+			//Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
+			CompletoRifornimentoPerInvioDati(stato_procedura);
         
-        if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
-        { 
+			if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
+			{ 
        
-          disable_ETH();
+			  disable_ETH();
           
-          righeDisplay[1] = "";
-          righeDisplay[2] = " Dati Inviati ";
-          righeDisplay[3] =  "";
+			  righeDisplay[1] = "";
+			  righeDisplay[2] = " Dati Inviati ";
+			  righeDisplay[3] =  "";
           
-          displayLCD(righeDisplay,stato_procedura,100);
+			  displayLCD(righeDisplay,stato_procedura,100);
           
-          _delay_ms(20);     
+			  _delay_ms(20);     
           
-          Azzera();
-        }
-        else { avanzaStato(TmaxSalvataggio); }        
-      **********************************************************/
-      }
+			  Azzera();
+			}
+			else { avanzaStato(TmaxSalvataggio); }        
+		  **********************************************************/
+	   }
     }
     break;
     case 8:
@@ -1500,7 +1556,7 @@ ISR(PCINT0_vect) {
        }
         if (PINA & _BV(PA6)){
                impulsi++;
-        _delay_ms(4);
+        _delay_ms(2.6);
         }  
 }
 
@@ -1518,19 +1574,22 @@ ISR(PCINT3_vect) {
         abilitaPulser('B');
         Rele_Abilitazione2(0,7); // chiudi relè
         Carburante = "B";
-    RaccoltaDati[2] = Carburante;
+		RaccoltaDati[2] = Carburante;
         StatoAttuale = "BENZINA";       
+		righeDisplay[1] =  "****** KM ******";
+		righeDisplay[2] = "KM:";
+		righeDisplay[3] = "#:Conferma";
         avanzaStato(10);                            
         intConsecutivePresses = 0;                    // and reset press counts
         intConsecutiveNonPresses = 0;
       }
     }
     else  {           // else if button is not pressed (logic low)
-    intConsecutiveNonPresses++;
-    if(intConsecutiveNonPresses >= NUM_OF_CONSECUTIVE_NON_PRESSES) {
-      intConsecutivePresses = 0;                      // reset press counts
-      intConsecutiveNonPresses = 0;
-    }
+		intConsecutiveNonPresses++;
+		if(intConsecutiveNonPresses >= NUM_OF_CONSECUTIVE_NON_PRESSES) {
+			intConsecutivePresses = 0;                      // reset press counts
+			intConsecutiveNonPresses = 0;
+		}
     }     
       
     if (PIND & _BV(PD7))
@@ -1541,8 +1600,11 @@ ISR(PCINT3_vect) {
         abilitaPulser('D');
         Rele_Abilitazione1(0,7); // chiudi relè
         Carburante = "D";
-    RaccoltaDati[2] = Carburante;
+		RaccoltaDati[2] = Carburante;
         StatoAttuale = "GASOLIO";
+		righeDisplay[1] =  "****** KM ******";
+		righeDisplay[2] = "KM:";
+		righeDisplay[3] = "#:Conferma";
         avanzaStato(10);
         intConsecutivePresses = 0;                    // and reset press counts
         intConsecutiveNonPresses = 0;
