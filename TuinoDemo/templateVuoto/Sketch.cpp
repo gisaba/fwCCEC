@@ -755,8 +755,9 @@ bool PostErogazioneGAC(int Port,char serverREST[],EthernetClient ClientHTTP,Stri
   {        
         _delay_ms(100);
         strURLAPI = "POST /Rifornimento.php HTTP/1.1\r\n";
-        strURLAPI += "Host: ccec.sa.dipvvf.it";
-        strURLAPI += "\r\n";
+        //strURLAPI += "Host: ccec.sa.dipvvf.it";
+		strURLAPI += "Host: " + String(serverREST);
+		strURLAPI += "\r\n";
         strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
         strURLAPI += "\r\n";
         strURLAPI += "content-type: application/json";
@@ -804,64 +805,6 @@ bool PostErogazioneGAC(int Port,char serverREST[],EthernetClient ClientHTTP,Stri
   printLine();
   _delay_ms(50);
   
-  return valida;
-}
-
-uint8_t GetMezzoValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,String P_Targa)
-{
- int valida = 0;
-
- if ( (ClientHTTP.connect(serverWEB, Port))) 
-  {
-    
-    //_delay_ms(80);
-  
-    strURLAPI = "GET /gac-servizi/integrazione/SO115/AnagraficaMezzi/prova HTTP/1.0\r\n";
-    strURLAPI += "Host: gacweb-test.dipvvf.it";
-    strURLAPI += "\r\n";
-    strURLAPI += "Authorization: fjhkhk";
-    strURLAPI += "\r\n";    
-    strURLAPI += "Accept: application/json";
-    strURLAPI += "\r\n";
-    strURLAPI += "accept-encoding: gzip, deflate";
-    strURLAPI += "\r\n";
-    strURLAPI += "accept-language: en-US,en;q=0.8";
-    strURLAPI += "\r\n";
-    strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
-    strURLAPI += "\r\n";
-    strURLAPI += "content-type: application/json";
-    strURLAPI += "\r\n";
-  
-    ClientHTTP.print(strURLAPI);
-  
-    _delay_ms(80);
-    ClientHTTP.println("Connection: close");
-    ClientHTTP.println();
-  }
-  else
-  {
-    lcd.clear();
-    lcd.setCursor(0,1);
-    lcd.print("Connessione Fallita.");
-    lcd.setCursor(0,3);
-    lcd.print("Verificare....");
-    _delay_ms(1000);
-  }
-
-  _delay_ms(100);
-
-  while (ClientHTTP.available()) {
-    char c = ClientHTTP.read();
-    RispostaHTTP = RispostaHTTP + c;
-    if (RispostaHTTP.length() == HTTP_len_response)
-    {
-      String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
-      _delay_ms(80);    
-          
-      if (rispostaGetTimbrature == "200"){ valida = 1; }
-      _delay_ms(80);
-    }
-  }
   return valida;
 }
 
@@ -1197,10 +1140,14 @@ void loop() {
 			   Serial.println(" Tessera ID : " + ATe);
 			   Serial.print("***************************************************************");
 			   Serial.println("Riconoscimento Tessera .............");
-                     
+                
+			   /*****************************************************
+				*					CODICE ATE						*
+			   /*****************************************************/     
 			   // RaccoltaDati[0] = ATe;
 				RaccoltaDati[0] = "DD92743A";     
 				RaccoltaDati[5] = "000";
+				/*****************************************************/
            
 				lcd.backlight();
 				lcd.display();          
@@ -1209,7 +1156,7 @@ void loop() {
 				righeDisplay[1] = "  RICONOSCIMENTO ";
 				righeDisplay[2] = ".....In Corso.....";
 				//righeDisplay[3] = "   Rfid: " + ATe;
-				righeDisplay[3] = "Attendere.........";
+				righeDisplay[3] = "...Attendere......";
            
 				displayLCD(righeDisplay,stato_procedura,100);   
       
@@ -1217,14 +1164,12 @@ void loop() {
            
 				_delay_ms(1000); // tempo per inizializzare la ethernet
 			}
-                                  
-			// Effettua chiamata REST per validare CARD NFC
-       
+            
 		   righeDisplay[1] =  "****** TARGA ******";
 		   righeDisplay[2] = "TARGA:";
-		   righeDisplay[3] = "#:Conferma A:Avanti";
+		   righeDisplay[3] = "#:Conferma A: TAG";
 	   
-			if (1) //(GetAteValidation(80,serverATE,clientATE,ATe)) 
+			if (1) //(GetAteValidation(80,serverATE,clientATE,ATe))  // Effettua chiamata REST per validare CARD NFC
 			{ 
 				RaccoltaDati[5] = "000";
 				SET_BIT(PORTC,PC4);
@@ -1324,7 +1269,7 @@ void loop() {
 			displayLCD(righeDisplay,stato_procedura,10);
 			_delay_ms(500);
 			avanzaStato(TselDistributore); 
-		 }	
+		 }
 	   }
     }
     break;
@@ -1342,7 +1287,7 @@ void loop() {
 		{
 			abilitaPulser('B');
 			Rele_Abilitazione2(0,7); // chiudi relè
-			StatoAttuale = "BENZINA";
+			StatoAttuale = "POMPA 2";
 			RaccoltaDati[2] = mezzo.Carb;
 	 		
 			righeDisplay[1] =  "****** KM ******";
@@ -1354,7 +1299,7 @@ void loop() {
 		{
 			abilitaPulser('D');
 			Rele_Abilitazione1(0,7); // chiudi relè
-			StatoAttuale = "GASOLIO";
+			StatoAttuale = "POMPA 1";
 			RaccoltaDati[2] = mezzo.Carb;
 			
 			righeDisplay[1] =  "****** KM ******";
@@ -1488,27 +1433,6 @@ void loop() {
 		disable_ETH();
 		avanzaStato(TmaxSalvataggio);
    
-		/****************TRAMITE SOCKET TCP*******************************************
-			//Messaggio = "000;2149016745;00001;2658;Diesel;70.00";
-			CompletoRifornimentoPerInvioDati(stato_procedura);
-        
-			if(InviaRifornimento(stato_procedura,Connected,MessaggioToServer,100,""))
-			{ 
-       
-			  disable_ETH();
-          
-			  righeDisplay[1] = "";
-			  righeDisplay[2] = " Dati Inviati ";
-			  righeDisplay[3] =  "";
-          
-			  displayLCD(righeDisplay,stato_procedura,100);
-          
-			  _delay_ms(20);     
-          
-			  Azzera();
-			}
-			else { avanzaStato(TmaxSalvataggio); }        
-		  **********************************************************/
 	   }
     }
     break;
@@ -1575,7 +1499,7 @@ ISR(PCINT3_vect) {
         Rele_Abilitazione2(0,7); // chiudi relè
         Carburante = "B";
 		RaccoltaDati[2] = Carburante;
-        StatoAttuale = "BENZINA";       
+        StatoAttuale = "POMPA 2";       
 		righeDisplay[1] =  "****** KM ******";
 		righeDisplay[2] = "KM:";
 		righeDisplay[3] = "#:Conferma";
@@ -1601,7 +1525,7 @@ ISR(PCINT3_vect) {
         Rele_Abilitazione1(0,7); // chiudi relè
         Carburante = "D";
 		RaccoltaDati[2] = Carburante;
-        StatoAttuale = "GASOLIO";
+        StatoAttuale = "POMPA 1";
 		righeDisplay[1] =  "****** KM ******";
 		righeDisplay[2] = "KM:";
 		righeDisplay[3] = "#:Conferma";
