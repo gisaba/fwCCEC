@@ -367,9 +367,9 @@ void Buzzer(uint8_t p_ripeti,uint32_t p_delay_suono) {
   
   for(int volte = 0;volte<p_ripeti;volte++)
   {
-    // TOGGLE_BIT(PORTC,BUZZER);
+    TOGGLE_BIT(PORTC,BUZZER);
     my_delay_ms(p_delay_suono);
-    // TOGGLE_BIT(PORTC,BUZZER);    
+    TOGGLE_BIT(PORTC,BUZZER);    
   }
 }
 
@@ -651,12 +651,16 @@ uint8_t GetAteValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,Str
   }
 
   _delay_ms(100);
-
+  printLine();
   while (ClientHTTP.available()) {
     char c = ClientHTTP.read();
     RispostaHTTP = RispostaHTTP + c;
+  
+    Serial.print("RispostaHTTP: " + RispostaHTTP);
+    
     if (RispostaHTTP.length() == HTTP_len_response)
     {
+      printLine();
       String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
       _delay_ms(80);      
     
@@ -666,6 +670,9 @@ uint8_t GetAteValidation(int Port,char serverWEB[],EthernetClient ClientHTTP,Str
       lcd.print("COD HTTP:");
       lcd.print(rispostaGetTimbrature);
       *******************/
+      printLine();
+      Serial.print("rispostaGetTimbrature: " + rispostaGetTimbrature);
+      printLine();
     
       if (rispostaGetTimbrature == "200"){ valida = 1; pass(true);}
       _delay_ms(80);
@@ -723,13 +730,23 @@ bool PostErogazione(int Port,char serverREST[],EthernetClient ClientHTTP,String 
 
   _delay_ms(100);
 
+  printLine();
   while (ClientHTTP.available()) {
     char c = ClientHTTP.read();
     RispostaHTTP = RispostaHTTP + c;
+
+    
+    Serial.print("RispostaHTTP: " + RispostaHTTP);
+         
     if (RispostaHTTP.length() == HTTP_len_response)
     {
+      printLine();
       String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
       _delay_ms(80);      
+
+      printLine();
+      Serial.print("rispostaGetTimbrature: " + rispostaGetTimbrature);
+      printLine();
     
       if (rispostaGetTimbrature == "200"){ valida = true; pass(true);}
       _delay_ms(80);
@@ -756,8 +773,8 @@ bool PostErogazioneGAC(int Port,char serverREST[],EthernetClient ClientHTTP,Stri
         _delay_ms(100);
         strURLAPI = "POST /Rifornimento.php HTTP/1.1\r\n";
         //strURLAPI += "Host: ccec.sa.dipvvf.it";
-		strURLAPI += "Host: " + String(serverREST);
-		strURLAPI += "\r\n";
+        strURLAPI += "Host: " + String(serverREST);
+        strURLAPI += "\r\n";
         strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
         strURLAPI += "\r\n";
         strURLAPI += "content-type: application/json";
@@ -789,14 +806,23 @@ bool PostErogazioneGAC(int Port,char serverREST[],EthernetClient ClientHTTP,Stri
   }
 
   _delay_ms(100);
-
+  
+  printLine();
   while (ClientHTTP.available()) {
     char c = ClientHTTP.read();
     RispostaHTTP = RispostaHTTP + c;
+    
+    Serial.print("RispostaHTTP: " + RispostaHTTP);
+  
     if (RispostaHTTP.length() == HTTP_len_response)
     {
+      printLine();
       String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
       _delay_ms(80);      
+
+     printLine();
+     Serial.print("rispostaGetTimbrature: " + rispostaGetTimbrature);
+     printLine();
     
       if (rispostaGetTimbrature == "200"){ valida = true; pass(true);}
       _delay_ms(80);
@@ -807,7 +833,6 @@ bool PostErogazioneGAC(int Port,char serverREST[],EthernetClient ClientHTTP,Stri
   
   return valida;
 }
-
 void abilitaPulsanti(){
   /****************ABILITO PULSANTI**************/
   DDRD &= ~(1 << PD7);    // sets PD7 for input Distributore1
@@ -1004,21 +1029,22 @@ void inputTarga(char T) {
 		righeDisplay[2] = "TARGA:" + TARGA;
 		righeDisplay[3] = "#:Conferma A:Usa TAG";
 		displayLCD(righeDisplay,stato_procedura,10);
+		Buzzer(2,10);
 	  }
     }
     break;  
     case ('#'): {
       if (TARGA.length() == 5) {
         mezzo.TARGA = TARGA;
-        RaccoltaDati[1] = mezzo.TARGA;
-				
-			
+        RaccoltaDati[1] = mezzo.TARGA;			
+		Buzzer(3,50);	
         avanzaStato(TinputTarga);
       }
     }
     break;
     default:  {
       TARGA += String(T);
+	  Buzzer(1,10);
       // _delay_ms(20);
 	   righeDisplay[1] =  "****** TARGA ******";
 	   righeDisplay[2] = "TARGA:" + TARGA;
@@ -1043,6 +1069,7 @@ void inputKM(char T) {
 	  righeDisplay[2] = "KM:" + KM;
 	  righeDisplay[3] = "#:Conferma";
 	  displayLCD(righeDisplay,stato_procedura,10);
+	  Buzzer(2,10);
     }
     break;  
     case ('#'): {
@@ -1052,12 +1079,14 @@ void inputKM(char T) {
 		righeDisplay[1] = "LITRI : 0.00";
 		righeDisplay[2] = "imp :" + String(impulsi);
 		righeDisplay[3] = "Erogazione: " + StatoAttuale;
+		Buzzer(3,50);
         avanzaStato(120);
       }
     }
     break;
     default:  {
       KM += String(T);
+	  Buzzer(1,10);
       //_delay_ms(20);
 	  righeDisplay[1] =  "****** KM ******";
 	  righeDisplay[2] = "KM:" + KM;
@@ -1169,7 +1198,7 @@ void loop() {
 		   righeDisplay[2] = "TARGA:";
 		   righeDisplay[3] = "#:Conferma A: TAG";
 	   
-			if (1) //(GetAteValidation(80,serverATE,clientATE,ATe))  // Effettua chiamata REST per validare CARD NFC
+			if (1) // (GetAteValidation(80,serverATE,clientATE,ATe))  // Effettua chiamata REST per validare CARD NFC
 			{ 
 				RaccoltaDati[5] = "000";
 				SET_BIT(PORTC,PC4);
@@ -1427,7 +1456,13 @@ void loop() {
 		  righeDisplay[2] = " Dati Inviati ";
 		  righeDisplay[3] =  "";    
 		  displayLCD(righeDisplay,stato_procedura,100);    
-		  _delay_ms(20);
+		 
+		  Serial.println("Dati Inviati ");   	
+		  printLine();	  
+		
+		} else {
+		  Serial.println("KO Inviati ");
+		  printLine();
 		}
     
 		disable_ETH();
@@ -1438,7 +1473,13 @@ void loop() {
     break;
     case 8:
     { 
-   Azzera();    
+		Buzzer(1,100);
+		_delay_ms(200);
+		Buzzer(1,100);
+		_delay_ms(200);
+		Buzzer(1,100);
+		_delay_ms(200);
+		Azzera();    
     }
     break;
     case 9:
