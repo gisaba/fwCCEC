@@ -13,11 +13,11 @@
 #include <Ethernet2.h>
 #include <Keypad.h>
 #include <Wire.h>
-#include "NFC_PN532.h"
+#include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
-#include "PCA9534.h"
-#include "my_EEPROM.h"
+#include <PCA9534.h>
+#include <my_EEPROM.h>
 /*********************************************************************************************/
 
 static const uint8_t D42 = 42;
@@ -48,22 +48,12 @@ static const uint8_t PULSER2 = PORTA6;
 static const uint8_t RELE1 = PORTC7;
 static const uint8_t RELE2 = PORTA7;
 /*********************************************************************************************/
-static inline void initSS_FLASH()  {
-  DDRB |= (1 << PB4);  // set DDRB bit 4, sets PB4 for output
-}
-static inline void initSS_ETH()    {
-  DDRC |= (1 << PC4);  // set DDRC bit 4, sets PC4 for output
-}
-static inline void enable_ETH()    {
-  PORTC &= ~(1 << PC4);  // Set 0 Bit 4 PORTC Register
-}
-static inline void enable_FLASH()  {
-  PORTB &= ~(1 << PB4);  // Set 0 Bit 4 PORTB Register
-}
-static inline void disable_ETH()   {PORTC |= (1 << PC4);   // Set 1 Bit 4 PORTC Register
-}
-static inline void disable_FLASH() {PORTB |= (1 << PB4);   // Set 1 Bit 4 PORTB Register
-}
+static inline void initSS_FLASH()  { DDRB |= (1 << PB4); } // set DDRB bit 4, sets PB4 for output
+static inline void initSS_ETH()    { DDRC |= (1 << PC4); } // set DDRC bit 4, sets PC4 for output
+static inline void enable_ETH()    { PORTC &= ~(1 << PC4); } // Set 0 Bit 4 PORTC Register
+static inline void enable_FLASH()  { PORTB &= ~(1 << PB4); } // Set 0 Bit 4 PORTB Register
+static inline void disable_ETH()   { PORTC |= (1 << PC4);  } // Set 1 Bit 4 PORTC Register
+static inline void disable_FLASH() { PORTB |= (1 << PB4);  } // Set 1 Bit 4 PORTB Register
 /***********************************************************************************************/
 
 #define BIT_IS_SET(byte, bit) (byte & (1 << bit))
@@ -74,13 +64,13 @@ static inline void disable_FLASH() {PORTB |= (1 << PB4);   // Set 1 Bit 4 PORTB 
 
 #define PN532_IRQ   (4)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
+
 #define NUM_OF_CONSECUTIVE_PRESSES 1
 #define NUM_OF_CONSECUTIVE_NON_PRESSES 2
-
-const uint8_t I2C_PCA9534_ADDR = 0x20;
-
 volatile int intConsecutivePresses = 0;
 volatile int intConsecutiveNonPresses = 0;
+
+const uint8_t I2C_PCA9534_ADDR = 0x20;
 
 struct mezzoType {
   String Carb;
@@ -129,7 +119,6 @@ String Carburante = "X";
 String Risposta = "";
 String Messaggio = "";
 String righeDisplay[] = {"X", "X", "X", "X"};
-char MessaggioToServer[100] = "";
 
 /************* PULSER *************************/
 /**/    int ImpulsiLitro = 50;              /**/
@@ -195,15 +184,13 @@ PCA9534 gpio;
 /********************************************************************************************/
 void InizializzaEthernet()
 {
-  /***********************************/
+  /*****************************/
   // inizializzo ethernet MICRO W5500
-  /**********************************/
   Ethernet.begin(mac, ipCCEC, myDns, gateway, subnet);
+
 }
 
 /************************************************************/
-uint32_t addr_erog = 16101;
-
 #define TRUE 1
 #define FALSE 0
 
@@ -245,41 +232,45 @@ void pass(bool _status) {
 
 void setup() {
 
-  _delay_ms(100);
-
-  initSS_ETH();
-  _delay_ms(5);
-  disable_ETH();
+   initSS_ETH();
+   _delay_ms(5);
+   disable_ETH();
 
   // Serial.begin(9600);
+  _delay_ms(100);
+
   Serial.println(" inizio Setup ......");
+  printLine();
 
   /*******************************************************************************************/
-  ParametriCCEC = Parametri;
-
-  ErogazioniEEPROM = Erogazioni;
-
-  Serial.begin(9600);
+  ParametriCCEC = Parametri;  
+  printLine();
   Serial.print("EEPROM utilizzata (byte): ");
   Serial.print(EEPROM.length());
   Serial.println(" ");
+  Serial.print("Scrittura Parametri CCEC");
+
+ 
 
   String app = "";
 
-  //    if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-  //    if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-  //    if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+  clearEEPROM(0,EEPROM.length());
+  if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+  if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+  if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
 
+  printLine();
+  Serial.print("Lettura Parametri CCEC da EEPROM");
   app = read_eeprom_string_struct(ParametriCCEC[0]);
-  app.toCharArray(serverREST,app.length());
+  app.toCharArray(serverREST,app.length()+1);
   
   app = read_eeprom_string_struct(ParametriCCEC[1]);
+  
   app = read_eeprom_string_struct(ParametriCCEC[2]);
-  app = read_erogazione_eeprom(ErogazioniEEPROM[0]);
-
-
+  
+  printLine();
   /*******************************************************************************************/
-  DDRC |= (1 << BUZZER); // set BUZZER (PC6) for output
+  DDRC |= (1 << BUZZER); // set pin BUZZER (PC6) for output
   DDRC |= (1 << RELE1);  // Rele1
   DDRA |= (1 << RELE2);  // Rele2   // set PA7 e PC7 come output
   _delay_ms(10);
@@ -287,7 +278,6 @@ void setup() {
   _delay_ms(10);
   SET_BIT(PORTA, RELE2); // Apri RELE2
   printLine();
-
   /***************************LCD******************************/
 
   lcd.begin(20, 4);        // Inizializza display LCD 20x4 e accendi e spegni 2 volte
@@ -339,7 +329,7 @@ void setup() {
   printLine();
   /***************************SPY FLASH*************************/
 
-  /*************************** RTC ************************/
+  /*************************** RTC *****************************/
   while (!DS3231M.begin()) {
     Serial.println(F("Unable to find DS3231MM. Checking again in 3s."));
     _delay_ms(1000);
@@ -378,11 +368,10 @@ void setup() {
   /**************** SETTING INIZIALI ******************/
 
   stato_procedura = - 2; // set stato di partenza
-
   StatoAttuale = "Starting ....";
-
-  Serial.println("Stato Iniziale" + StatoAttuale);
-
+  Serial.println(StatoAttuale);
+  printLine();
+  printLine();
   printLine();
 }
 
@@ -507,6 +496,7 @@ void displayLCD(String righe[], int stato, int delay_lcd)                       
 {
   //DateTime now = DS3231M.now();
   lcd.clear();
+  
   //sprintf(inputBuffer,"%04d-%02d-%02d %02d:%02d:%02d", now.year(),       // Use sprintf() to pretty print    //
   //now.month(), now.day(), now.hour(), now.minute(), now.second());      // date/time with leading zeros     //
   //Serial.println(inputBuffer);                        // Display the current date/time    //
@@ -681,30 +671,103 @@ uint8_t GetAteValidation(int Port, char serverWEB[], EthernetClient ClientHTTP, 
   }
 
   _delay_ms(100);
-
-  while (ClientHTTP.available()) {
+  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
+    String rispostaGetAteValidation = "99999";
     char c = ClientHTTP.read();
     RispostaHTTP = RispostaHTTP + c;
-    if (RispostaHTTP.length() == HTTP_len_response)
+
+    if ((RispostaHTTP.length() == HTTP_len_response) && (rispostaGetAteValidation == "99999"))
     {
-      String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
+      rispostaGetAteValidation = GetHTTPResponseCode(RispostaHTTP);
       _delay_ms(80);
 
-      /******************
-        lcd.clear();
-        lcd.setCursor(0,2);
-        lcd.print("COD HTTP:");
-        lcd.print(rispostaGetTimbrature);
-        *******************/
-
-      if (rispostaGetTimbrature == "200") {
-        valida = 1;
+      if (rispostaGetAteValidation == "200") {
+        valida = true;
         pass(true);
       }
       _delay_ms(80);
     }
   }
+  // _delay_ms(50);
+  return valida;
+}
+
+bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
+{
+  bool valida = false;
+
   printLine();
+  printTab(1);
+
+  Serial.print("Call Webservice GET GetAssociazioneByRfidCode ..............");
+
+  if ( (ClientHTTP.connect(serverREST, Port)))  // Chiamata al Rest server per interfacciamento al GAC
+  {
+    _delay_ms(100);
+    strURLAPI =  "GET /GetAssociazioneByRfidCode.php?rfidCode=" + _idAte + " HTTP/1.1\r\n";
+    strURLAPI += "Host: " + String(serverREST);
+    strURLAPI += "\r\n";
+    strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
+    strURLAPI += "\r\n";
+    strURLAPI += "content-type: application/json";
+    strURLAPI += "\r\n";
+    strURLAPI += "Accept: */*";
+    strURLAPI += "\r\n";
+    strURLAPI += "\r\n";
+    Serial.println(strURLAPI);    
+    ClientHTTP.print(strURLAPI);
+
+     _delay_ms(200);
+    ClientHTTP.println("Connection: close");
+    ClientHTTP.println();        
+  }
+  else
+  {
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("Connessione Fallita.");
+    lcd.setCursor(0, 3);
+    lcd.print("Verificare....");
+    _delay_ms(1000);
+  }
+
+  _delay_ms(10);
+
+  String rispostaGetAte = "X";
+  
+  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
+    char c = ClientHTTP.read();
+    RispostaHTTP = RispostaHTTP + c;
+  }
+
+  rispostaGetAte = GetHTTPResponseCode(RispostaHTTP);
+   _delay_ms(80);
+
+   if (rispostaGetAte == "200") {
+       valida = true;
+       pass(true);
+       printLine();
+    }       
+
+//  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
+//    String rispostaGetAte = "X";
+//    char c = ClientHTTP.read();
+//    RispostaHTTP = RispostaHTTP + c;
+//
+//    if ((RispostaHTTP.length() == HTTP_len_response) && (rispostaGetAte == "X"))
+//    {
+//      rispostaGetAte = GetHTTPResponseCode(RispostaHTTP);
+//      _delay_ms(80);
+//
+//      if (rispostaGetAte == "200") {
+//        valida = true;
+//        pass(true);
+//        printLine();
+//      }
+//      _delay_ms(50);
+//    }
+//  }
+  //_delay_ms(50);
   return valida;
 }
 
@@ -715,13 +778,13 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
   printLine();
   printTab(1);
 
-  Serial.print("Call Webservice POST Erogazione ..............");
+  Serial.print("Call Webservice POST Erogazione Rifornimento.php ..............");
 
   if ( (ClientHTTP.connect(serverREST, Port)))  // Chiamata al Rest server per interfacciamento al GAC
   {
     _delay_ms(100);
     strURLAPI = "POST /Rifornimento.php HTTP/1.1\r\n";
-    strURLAPI += "Host: ccec.sa.dipvvf.it";
+    strURLAPI += "Host: " + String(serverREST);
     strURLAPI += "\r\n";
     strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
     strURLAPI += "\r\n";
@@ -729,88 +792,20 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
     strURLAPI += "\r\n";
     strURLAPI += "Accept: */*";
     strURLAPI += "\r\n";
-    //strURLAPI += "Content-Length: 37";
+    //strURLAPI += "Content-Length: 94";
     strURLAPI += "Content-Length: " + String(_erogazione.length() + 21);
     strURLAPI += "\r\n";
     strURLAPI += "\r\n";
     strURLAPI += _erogazione;
     strURLAPI += "\r\n";
-
-    ClientHTTP.print(strURLAPI);
-    _delay_ms(80);
-    ClientHTTP.println("Connection: close");
-    ClientHTTP.println();
-
-    printLine();
     Serial.println(strURLAPI);
-  }
-  else
-  {
-    lcd.clear();
-    lcd.setCursor(0, 1);
-    lcd.print("Connessione Fallita.");
-    lcd.setCursor(0, 3);
-    lcd.print("Verificare....");
-    _delay_ms(1000);
-  }
-
-  _delay_ms(100);
-
-  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
-    String rispostaGetTimbrature = "99999";
-    char c = ClientHTTP.read();
-    RispostaHTTP = RispostaHTTP + c;
-
-    printLine();
-    Serial.println(RispostaHTTP);
-
-    if ((RispostaHTTP.length() == HTTP_len_response) && (rispostaGetTimbrature == "99999"))
-    {
-      rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
-      _delay_ms(80);
-
-      if (rispostaGetTimbrature == "200") {
-        valida = true;
-        pass(true);
-      }
-      _delay_ms(80);
-    }
-  }
-  _delay_ms(50);
-
-  return valida;
-}
-
-uint8_t GetMezzoValidation(int Port, char serverWEB[], EthernetClient ClientHTTP, String P_Targa)
-{
-  int valida = 0;
-
-  if ( (ClientHTTP.connect(serverWEB, Port)))
-  {
-
-    //_delay_ms(80);
-
-    strURLAPI = "GET /gac-servizi/integrazione/SO115/AnagraficaMezzi/prova HTTP/1.0\r\n";
-    strURLAPI += "Host: gacweb-test.dipvvf.it";
-    strURLAPI += "\r\n";
-    strURLAPI += "Authorization: fjhkhk";
-    strURLAPI += "\r\n";
-    strURLAPI += "Accept: application/json";
-    strURLAPI += "\r\n";
-    strURLAPI += "accept-encoding: gzip, deflate";
-    strURLAPI += "\r\n";
-    strURLAPI += "accept-language: en-US,en;q=0.8";
-    strURLAPI += "\r\n";
-    strURLAPI += "user-agent: Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) advanced-rest-client/12.1.4 Chrome/61.0.3163.100 Electron/2.0.2 Safari/537.36";
-    strURLAPI += "\r\n";
-    strURLAPI += "content-type: application/json";
-    strURLAPI += "\r\n";
-
+    
     ClientHTTP.print(strURLAPI);
-
-    _delay_ms(80);
+    _delay_ms(400);
+    
     ClientHTTP.println("Connection: close");
-    ClientHTTP.println();
+    ClientHTTP.println();    
+    
   }
   else
   {
@@ -822,22 +817,43 @@ uint8_t GetMezzoValidation(int Port, char serverWEB[], EthernetClient ClientHTTP
     _delay_ms(1000);
   }
 
-  _delay_ms(100);
+  _delay_ms(10);
 
-  while (ClientHTTP.available()) {
+  String rispostaPOSTGAC = "X";
+  
+  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
     char c = ClientHTTP.read();
     RispostaHTTP = RispostaHTTP + c;
-    if (RispostaHTTP.length() == HTTP_len_response)
-    {
-      String rispostaGetTimbrature = GetHTTPResponseCode(RispostaHTTP);
-      _delay_ms(80);
-
-      if (rispostaGetTimbrature == "200") {
-        valida = 1;
-      }
-      _delay_ms(80);
-    }
   }
+
+  rispostaPOSTGAC = GetHTTPResponseCode(RispostaHTTP);
+   _delay_ms(80);
+
+   if (rispostaPOSTGAC == "200") {
+       valida = true;
+       pass(true);
+       printLine();
+    }     
+
+//  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
+//    String rispostaPOSTGAC = "99999";
+//    char c = ClientHTTP.read();
+//    RispostaHTTP = RispostaHTTP + c;
+//
+//    if ((RispostaHTTP.length() == HTTP_len_response) && (rispostaPOSTGAC == "99999"))
+//    {
+//      rispostaPOSTGAC = GetHTTPResponseCode(RispostaHTTP);
+//      _delay_ms(80);
+//
+//      if (rispostaPOSTGAC == "200") {
+//        valida = true;
+//        pass(true);
+//        printLine();
+//      }
+//      _delay_ms(80);
+//    }
+//  }
+//  _delay_ms(50);
   return valida;
 }
 
@@ -880,12 +896,10 @@ void abilitaPulser(char p_carburante)
 };
 
 void ContaImpulsi()
-{
-  //if (((millis() - lastDebounceTime) > debounceDelay))
+{  
   {
-    impulsi++;
-    //lastDebounceTime = millis();
-    _delay_ms(4);
+    impulsi++;   
+    my_delay_ms(debounceDelay);
   }
 }
 
@@ -896,9 +910,9 @@ double impulsiToLitri(int P_impulsi)
   if (imp < 0) {
     imp = 0;
   }
-  double lt = (imp / ImpulsiLitro);
-  double totale = lt;
-  return totale;
+  double lt = (imp/ImpulsiLitro);
+  //double totale = lt;
+  return lt;
 }
 
 void Rele_Abilitazione1(int p_azione, int p_bit) {
@@ -970,15 +984,11 @@ void Azzera()
   RispostaHTTP = "";
   impulsi = 0;
   alreadyTimbrata = false;
-
   Carburante = "X";
 
   Rele_Abilitazione1(1, 7);
   Rele_Abilitazione2(1, 7);
   Control_WIFI(0);
-
-  //clientToServizio.flush();
-  //clientToServizio.stop();
 
   _delay_ms(5);
   clientATE.flush();
@@ -988,10 +998,12 @@ void Azzera()
   clientLOCAL.stop();
   Connected = false;
   _delay_ms(5);
+  
   enable_FLASH();
   _delay_ms(5);
   disable_FLASH();
   _delay_ms(5);
+  
   disable_ETH();
   _delay_ms(5);
   enable_ETH();
@@ -1110,6 +1122,7 @@ void inputKM(char T) {
   }
 }
 
+/******************************* EERPOM ***************************************/
 String read_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
 
   String Salvata = "OK";
@@ -1132,7 +1145,6 @@ String read_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
   Serial.println(Salvata);
   return Salvata;
 }
-
 
 bool write_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
 
@@ -1158,51 +1170,91 @@ bool write_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
   return true;
 }
 
-bool write_erogazione_eeprom(Erogazioni_TypeDef dato) {
+void clearEEPROM(int ind_from,int ind_to) {
+ Serial.println(" ");
+ Serial.println(" ");
+ Serial.println("Eseguo la clear della EEPROM");
+ for (int i = ind_from ; i < ind_to ; i++) {
+   EEPROM.write(i, 0);
+ }
+ Serial.println("Clear completata");
+ Serial.println(" ");
+ Serial.println(" ");
+}
 
-  int lunBuffer = dato.da_memorizzare.length();
-  char buf[lunBuffer];
-  dato.da_memorizzare.toCharArray(buf, lunBuffer + 1);
-  bool out = false;
-  int i = 0;
+String read_eeprom_string(int lunBuffer,int start_ind) {
 
-  Serial.println(" len: " + String(lunBuffer));
-  Serial.println("Eseguo scrittura nella EEPROM");
-  Serial.println(" ");
+ String Salvata = "OK";
+ uint8_t buf[lunBuffer];
+ int i = 0;
 
-  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
+ Serial.println(" ");
+ Serial.println("\r\n Fase di lettura");
+ Serial.println(" ");
+ 
+ for (int ind = start_ind ;ind < (start_ind + lunBuffer);ind++) {
+    buf[i] = EEPROM.read(ind);
     if (buf[i] != 0) {
-      EEPROM.write(ind, buf[i]);
-      //Serial.print(" " + String(buf[i]));
+      Serial.print(" " +  String(buf[i])); 
     }
     i++;
   }
-  Serial.println(" ");
 
-  return true;
+ Serial.println(" ");
+ Serial.println(" ");
+ Salvata = String((char *)buf);
+ Serial.print("Salvata nella EEPROM: ");
+ Serial.println(Salvata);
+ return Salvata;
 }
 
-String read_erogazione_eeprom(Erogazioni_TypeDef dato) {
+String read_string_from_eeprom(int start_ind) {
 
-  String Salvata = "OK";
-  int lunBuffer = dato.da_memorizzare.length();
-  uint8_t buf[lunBuffer];
-  int i = 0;
+ String Salvata = "";
+ int ind = start_ind;
+ Serial.println(" ");
+ Serial.println("\r\n Fase di lettura");
+ Serial.println(" ");
+ 
 
-  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
-    buf[i] = EEPROM.read(ind);
-    //if (buf[i] != 0) {
-    //  Serial.print(" " +  String(buf[i]));
-    // }
-    i++;
+ char c = EEPROM.read(ind);
+ Salvata = Salvata + c;
+ while(c != '\0') {
+    c = EEPROM.read(ind);
+    Salvata = Salvata + c;    
+    ind++;
+ }
+
+ Serial.println(" ");
+ Serial.println(" ");
+ Serial.print("Salvata nella EEPROM: ");
+ Serial.println(Salvata);
+ return Salvata;
+}
+
+bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
+ 
+ char buf[lunBuffer];
+ erog.toCharArray(buf, erog.length()+1);
+ bool out = false;
+ int i = 0;
+ 
+ Serial.println(" len: " + String(lunBuffer));
+ Serial.println("Eseguo scrittura nella EEPROM");
+ Serial.println(" ");
+
+  for (int ind = start_ind ; ind < (start_ind + lunBuffer) ; ind++) {
+     if (buf[i] != 0) {
+      EEPROM.write(ind, buf[i]);
+      Serial.print(" " + String(buf[i]));
+     }
+       i++;
   }
-
-  Serial.println(" ");
-  Serial.println(" ");
-  Salvata = String((char *)buf);
-  Serial.println(Salvata);
-  return Salvata;
+ Serial.println(" ");
+ 
+ return true;
 }
+/******************************* EERPOM ***************************************/
 
 /**************************LOOP PROCEDURA************************************/
 void loop() {
@@ -1282,9 +1334,9 @@ void loop() {
           Serial.print("***************************************************************");
           Serial.println("Riconoscimento Tessera .............");
 
-          //RaccoltaDati[0] = ATe;
+          // RaccoltaDati[0] = ATe;
           RaccoltaDati[0] = "DD92743A";
-          RaccoltaDati[5] = "000";
+          // RaccoltaDati[5] = "000";
 
           lcd.backlight();
           lcd.display();
@@ -1304,31 +1356,55 @@ void loop() {
 
         // Effettua chiamata REST per validare CARD NFC
 
+        lcd.clear();
         righeDisplay[1] =  "****** TARGA ******";
         righeDisplay[2] = "TARGA:";
         righeDisplay[3] = "#:Conferma A:Avanti";
 
-        avanzaStato(65);
+        // avanzaStato(65);
+        // RaccoltaDati[5] = "000";
 
-        /*      if (1) //(GetAteValidation(80,serverATE,clientATE,ATe))
-              {
-                RaccoltaDati[5] = "000";
+        // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
+
+        if (GetAteCheck(80,serverREST,clientATE,ATe)) {
                 SET_BIT(PORTC,PC4);
+                RaccoltaDati[5] = "000";               
                 Buzzer(1,400);
-                //displayLCD(righeDisplay,stato_procedura,10);
-                _delay_ms(50);
-                avanzaStato(TinputTarga);
-              }
-              else
+                displayLCD(righeDisplay,stato_procedura,10);
+                //_delay_ms(50);
+                avanzaStato(TinputTarga);} 
+         else
               {
                 RaccoltaDati[5] = "111";
                 Buzzer(3,200);
-                //displayLCD(righeDisplay,stato_procedura,10);
-                _delay_ms(50);
-                avanzaStato(TinputTarga);
-                //Azzera();
+                lcd.clear();
+                righeDisplay[1] =  "****** ERRORE ******";
+                righeDisplay[2] = "Ate NON VALIDA:";
+                righeDisplay[3] = "";
+                displayLCD(righeDisplay,stato_procedura,10);
+                _delay_ms(1000);
+                Azzera();
               }
-        */
+
+//              if (GetAteValidation(80,serverATE,clientATE,ATe))
+//              {
+//                RaccoltaDati[5] = "000";
+//                SET_BIT(PORTC,PC4);
+//                Buzzer(1,400);
+//                //displayLCD(righeDisplay,stato_procedura,10);
+//                _delay_ms(50);
+//                avanzaStato(TinputTarga);
+//              }
+//              else
+//              {
+//                RaccoltaDati[5] = "111";
+//                Buzzer(3,200);
+//                //displayLCD(righeDisplay,stato_procedura,10);
+//                _delay_ms(50);
+//                avanzaStato(TinputTarga);
+//                //Azzera();
+//              }
+       
       }
       break;
     case 2:
@@ -1526,10 +1602,60 @@ void loop() {
         righeDisplay[2] = "Invio........";
         righeDisplay[3] =  "";
 
+        //if (BIT_IS_CLEAR(PORTC, 4))   {
+          displayLCD(righeDisplay, stato_procedura, 10);
+          Messaggio = "";
+
+          for (int k = 0; k < 6; k++)
+            Messaggio.concat(RaccoltaDati[k] + ";");
+
+          Messaggio.concat(CodSede);
+          Serial.println("Messaggio:" + Messaggio);
+
+          // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
+
+          /*****************************************************************/
+          disable_ETH();
+          _delay_ms(2);
+          enable_ETH();
+          /*****************************************************************/
+
+          _delay_ms(1000);
+          avanzaStato(30); 
+
+//          if (PostErogazioneGAC(80, serverREST, clientLOCAL, Messaggio))
+//          {
+//            _delay_ms(200);
+//            Serial.println("PostErogazioneGAC - OK" );          
+//            // disable_ETH();
+//            Azzera();  
+//          }
+//          else
+//          {
+//             disable_ETH();   
+//             String ultima_indirizzo  = read_eeprom_string(Messaggio.length(),1035);
+//             int indirizzo = ultima_indirizzo.toInt();
+//            // bool write_eeprom_string(String erog,int lunBuffer,int start_ind)
+//            if (write_eeprom_string(Messaggio,Messaggio.length(),indirizzo))
+//              {
+//                Serial.println("WRITE OK AT address :" + String(indirizzo));
+//                indirizzo = indirizzo + 50;  
+//                if (indirizzo > 3000) {indirizzo = 2000; }   
+//                String update_ultima_indirizzo = String(indirizzo);
+//                if (write_eeprom_string(update_ultima_indirizzo,update_ultima_indirizzo.length(),1035))
+//                  Serial.println("UPDATE OK AT address :" + String(indirizzo));  
+//              }                
+//              Azzera();
+//              // avanzaStato(30);                       
+//          }                  
+        //}
+      }
+      break;
+    case 8:
+      {        
         if (BIT_IS_CLEAR(PORTC, 4))
         {
           displayLCD(righeDisplay, stato_procedura, 10);
-
           Messaggio = "";
 
           for (int k = 0; k < 6; k++)
@@ -1542,43 +1668,38 @@ void loop() {
 
           _delay_ms(1000);
 
-          //if (PostErogazione(5001,serverREST,clientLOCAL,Messaggio))
           if (PostErogazioneGAC(80, serverREST, clientLOCAL, Messaggio))
           {
             disable_ETH();
-            righeDisplay[1] = "";
-            righeDisplay[2] = " Dati Inviati ";
-            righeDisplay[3] =  "";
-            displayLCD(righeDisplay, stato_procedura, 100);
-            _delay_ms(20);
-            Serial.println("PostErogazioneGAC - OK" );
+            _delay_ms(200);
+            Serial.println("PostErogazioneGAC - OK" );                      
+            Azzera();  
           }
           else
           {
-            ErogazioniEEPROM[0].da_memorizzare = Messaggio;
-            if (write_erogazione_eeprom(ErogazioniEEPROM[0])) {
-              Serial.println("WRITE OK");
-            }
-            int kkk = 0;
-            while ((!PostErogazioneGAC(80, serverREST, clientLOCAL, Messaggio)) && (kkk < 5)) {
-              kkk++;
-              Serial.println("TENTATIVO " + String(kkk));
-            }
-            Serial.println("PostErogazioneGAC - KO" );
-          }
-          disable_ETH();
-          avanzaStato(TmaxSalvataggio);
+             disable_ETH();   
+             String ultima_indirizzo  = read_eeprom_string(Messaggio.length(),1035);
+             int indirizzo = ultima_indirizzo.toInt();
+            // bool write_eeprom_string(String erog,int lunBuffer,int start_ind)
+            if (write_eeprom_string(Messaggio,Messaggio.length(),indirizzo))
+              {
+                Serial.println("WRITE OK AT address :" + String(indirizzo));
+                indirizzo = indirizzo + 50;  
+                if (indirizzo > 3000) {indirizzo = 2000; }   
+                String update_ultima_indirizzo = String(indirizzo);
+                if (write_eeprom_string(update_ultima_indirizzo,update_ultima_indirizzo.length(),1035))
+                  Serial.println("UPDATE OK AT address :" + String(indirizzo));  
+              }                
+              Azzera();
+              // avanzaStato(30);                       
+          }                  
         }
-      }
-      break;
-    case 8:
-      {
-        Azzera();
+
       }
       break;
     case 9:
       {
-        Azzera();
+        
       }
       break;
     case 100:
