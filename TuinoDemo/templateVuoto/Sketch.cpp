@@ -61,26 +61,19 @@ static inline void disable_FLASH() { PORTB |= (1 << PB4);  } // Set 1 Bit 4 PORT
 #define SET_BIT(byte, bit) (byte |= (1 << bit))
 #define CLEAR_BIT(byte, bit) (byte &= ~(1 << bit))
 #define TOGGLE_BIT(byte, bit) (byte ^= (1 << bit))
-
 #define PN532_IRQ   (4)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
-
 #define NUM_OF_CONSECUTIVE_PRESSES 1
 #define NUM_OF_CONSECUTIVE_NON_PRESSES 2
+
 volatile int intConsecutivePresses = 0;
 volatile int intConsecutiveNonPresses = 0;
-
 const uint8_t I2C_PCA9534_ADDR = 0x20;
 
 struct mezzoType {
   String Carb;
   String TARGA;
   String KM;
-};
-
-struct erogazioni {
-  uint16_t n;
-  String erogazioni[30];
 };
 
 mezzoType mezzo;
@@ -109,21 +102,22 @@ int GO = LOW;               // Semaforo Generale
 int stato_procedura = 0;    // Stato del Sistema
 volatile int impulsi = 0;   // Variabile per il conteggio degli impulsi generati dal pulser
 
+uint8_t distr_selezionato = 0;
 /*** GESTIONE HTTP REQUEST ***/
 
 int HTTP_len_response = 12;
 String RispostaHTTP = "";
 // Ate;TARGA;CARB;LT;KM;
 String RaccoltaDati[] = {"", "", "", "", "", ""};
-String Carburante = "X";
+// String Carburante = "X";
 String Risposta = "";
 String Messaggio = "";
 String righeDisplay[] = {"X", "X", "X", "X"};
 
 /************* PULSER *************************/
 /**/    int ImpulsiLitro = 50;              /**/
-/**/    double debounceDelay = 4.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
-/**/    double debounceDelayBenzina = 4.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
+/**/    double debounceDelay = 8.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
+/**/    double debounceDelayBenzina = 8.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**********************************************/
 char CodSede[] = "SA1001";
 /********************************************************************************************/
@@ -144,7 +138,8 @@ EthernetClient clientATE;
 
 byte mac[] = {0x00, 0x0E, 0x0C, 0xB0, 0x25, 0x6F};
 /********************************************************************************************/
-/************ GESTIONE RTC **********/
+/*                    Real Time Clock                       */
+/********************************************************************************************/
 DS3231M_Class DS3231M;
 const uint8_t SPRINTF_BUFFER_SIZE =     32;
 char          inputBuffer[SPRINTF_BUFFER_SIZE];
@@ -152,17 +147,18 @@ unsigned long secs;                            // store the seconds value
 unsigned long UltimoPassaggioStato = 0;        // Timer Stati Procedura
 unsigned long Timer = 0;                       // Timer
 DateTime nowTimer;
-
-// Timer avanzamento stati
+/********************************************************************************************/
+/*                     Timer avanzamento stati
 /********************************************************************************************/
 unsigned long TverificaBadge = 60;        // 5 secondi
-unsigned long TinputTarga = 60;          // 30 Secondi
-unsigned long TselDistributore = 30;     // 30 Secondi
-unsigned long TsgancioPistola = 60;      // 60 secondi
-unsigned long TmaxErogazione = 180;      // 3 minuti
-unsigned long TmaxInviodati = 10;        // 10 Secondi
-unsigned long TmaxProgrammingMode = 15;  // 15 Secondi
-unsigned long TmaxSalvataggio = 15;      // 15 Secondi
+unsigned long TinputTarga = 120;          // 120 Secondi
+unsigned long TinputKM = 120;             // 120 Secondi
+unsigned long TselDistributore = 120;     // 120 Secondi
+unsigned long TsgancioPistola = 300;      // 300 secondi
+unsigned long TmaxErogazione = 360;       // 6 minuti
+unsigned long TmaxInviodati = 30;         // 30 Secondi
+unsigned long TmaxProgrammingMode = 30;   // 30 Secondi
+unsigned long TmaxSalvataggio = 30;       // 30 Secondi
 /********************************************************************************************/
 
 const byte ROWS = 4; //four rows
@@ -184,8 +180,9 @@ PCA9534 gpio;
 /********************************************************************************************/
 void InizializzaEthernet()
 {
-  /*****************************/
+  /***********************************/
   // inizializzo ethernet MICRO W5500
+  /***********************************/
   Ethernet.begin(mac, ipCCEC, myDns, gateway, subnet);
 
 }
@@ -236,8 +233,8 @@ void setup() {
    _delay_ms(5);
    disable_ETH();
 
-  // Serial.begin(9600);
-  _delay_ms(100);
+   // Serial.begin(115200);
+   _delay_ms(100);
 
   Serial.println(" inizio Setup ......");
   printLine();
@@ -250,26 +247,16 @@ void setup() {
   Serial.println(" ");
   Serial.print("Scrittura Parametri CCEC");
 
- 
-
   String app = "";
 
-  clearEEPROM(0,EEPROM.length());
-  if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+ clearEEPROM(0,EEPROM.length());
+ if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
 
-  printLine();
-  Serial.print("Lettura Parametri CCEC da EEPROM");
-  app = read_eeprom_string_struct(ParametriCCEC[0]);
-  app.toCharArray(serverREST,app.length()+1);
-  
-  app = read_eeprom_string_struct(ParametriCCEC[1]);
-  
-  app = read_eeprom_string_struct(ParametriCCEC[2]);
-  
-  printLine();
-  /*******************************************************************************************/
+  printLine();  
+/*******************************************************************************************/
   DDRC |= (1 << BUZZER); // set pin BUZZER (PC6) for output
   DDRC |= (1 << RELE1);  // Rele1
   DDRA |= (1 << RELE2);  // Rele2   // set PA7 e PC7 come output
@@ -278,6 +265,7 @@ void setup() {
   _delay_ms(10);
   SET_BIT(PORTA, RELE2); // Apri RELE2
   printLine();
+
   /***************************LCD******************************/
 
   lcd.begin(20, 4);        // Inizializza display LCD 20x4 e accendi e spegni 2 volte
@@ -327,11 +315,10 @@ void setup() {
   nfc.setPassiveActivationRetries(0xFF);
   nfc.SAMConfig();
   printLine();
-  /***************************SPY FLASH*************************/
-
-  /*************************** RTC *****************************/
+  
+  /*************************** RTC ************************/
   while (!DS3231M.begin()) {
-    Serial.println(F("Unable to find DS3231MM. Checking again in 3s."));
+    Serial.println(F("non trovo modulo RTC DS3231MM. Riprovo tra 3s."));
     _delay_ms(1000);
   }
   _delay_ms(50);
@@ -343,7 +330,6 @@ void setup() {
   Serial.println("Inizializzo POTENZIOMETRI per livello pulser.......");
 
   Wire.begin(); // join i2c bus (address optional for master)
-
   Wire.beginTransmission(0x28);  // (0x50) POTENZIOMETRO U11
   Wire.write(byte(0x00));        // Wiper Register
   Wire.write(50);                // Valore del potenziomentro circa 6 volt
@@ -355,14 +341,11 @@ void setup() {
   Wire.write(byte(0x00));        // Wiper Register
   Wire.write(50);                // Valore del potenziomentro circa 6 volt
   Wire.endTransmission();
-
   Wire.end();
-
   Serial.println("POTENZIOMETRI OK");
   printLine();
   /*************************KEYPAD*********************/
   gpio.begin(I2C_PCA9534_ADDR);
-
   // set REG IOexpander OPREG 11000011,INVREG 00000000,CONFREG 00111100
   gpio.setporteIoExp(0xC3, 0x00, 0x3C);
   /**************** SETTING INIZIALI ******************/
@@ -494,8 +477,8 @@ char getCharKeypad(int _ioexpanderByte)
 
 void displayLCD(String righe[], int stato, int delay_lcd)                                             // get the current time             //
 {
-  //DateTime now = DS3231M.now();
   lcd.clear();
+  //DateTime now = DS3231M.now();
   
   //sprintf(inputBuffer,"%04d-%02d-%02d %02d:%02d:%02d", now.year(),       // Use sprintf() to pretty print    //
   //now.month(), now.day(), now.hour(), now.minute(), now.second());      // date/time with leading zeros     //
@@ -512,15 +495,71 @@ void displayLCD(String righe[], int stato, int delay_lcd)                       
   lcd.print(righe[2]);
   lcd.setCursor(0, 3);
   lcd.print(righe[3]);
-
-  my_delay_ms(delay_lcd);
+  // my_delay_ms(delay_lcd);
 }
 
-void avanzaStato(unsigned long p_timer) {
+void avanzaStato(unsigned long p_timer) {  
+  lcd.clear();
   displayLCD(righeDisplay, stato_procedura, 10);
   Timer = p_timer;
+  _delay_ms(5);
   UltimoPassaggioStato = nowTimer.secondstime();
   stato_procedura++;
+}
+
+String scrivi_TAG_Mezzo(char * w_TARGA)
+{
+  String OUT;
+
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uidMezzo, &uidLength, 200);
+
+  if (success) {
+
+    if (uidLength == 4)
+    {
+      uint8_t keya[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+      success = nfc.mifareclassic_AuthenticateBlock(uidMezzo, uidLength, 4, 0, keya);
+
+      if (success)
+      {
+        uint8_t data[16];
+
+        memcpy(data,w_TARGA, sizeof data); // 1000030442
+        success = nfc.mifareclassic_WriteDataBlock (4, data);        
+        _delay_ms(100);
+        // Try to read the contents of block 4
+        success = nfc.mifareclassic_ReadDataBlock(4, data);
+
+        Serial.println("LETTURA TARGA");
+        String TargaRFID = (char*)data;
+          
+        if (success)
+        {
+          Serial.println(TargaRFID);
+          if (TargaRFID.length() == 6)
+          {
+            return TargaRFID;
+          }
+          // Aspetta prima di leggere una nuova CARD NFC
+          _delay_ms(100);
+        }
+        else
+        {
+          lcd.clear();
+          lcd.setCursor(0, 1);
+          lcd.print("Blocco KO");
+        }
+      }
+      else
+      {
+        lcd.clear();
+        lcd.setCursor(0, 1);
+        lcd.print("Auth KO");
+      }
+    }
+    Serial.println("");
+  }
+  return OUT;
 }
 
 String leggiTAG_Mezzo(bool scrivi)
@@ -545,7 +584,7 @@ String leggiTAG_Mezzo(bool scrivi)
         // Se il parametro scrivi è true scriviamo sul blocco 4 del TAG
         if (scrivi)
         { memcpy(data, (const uint8_t[]) {
-            '2', '8', '5', '3', '0', 'D', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            '2', '8', '5', '3', '1', 'D', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
           }, sizeof data); // 1000030442
           success = nfc.mifareclassic_WriteDataBlock (4, data);
         }
@@ -574,14 +613,14 @@ String leggiTAG_Mezzo(bool scrivi)
         {
           lcd.clear();
           lcd.setCursor(0, 1);
-          lcd.print("Blocco KO");
+          lcd.print("RITENTA !!!!");
         }
       }
       else
       {
         lcd.clear();
         lcd.setCursor(0, 1);
-        lcd.print("Auth KO");
+        lcd.print("CARD BLOCCATA");
       }
     }
     Serial.println("");
@@ -717,7 +756,10 @@ bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String 
     Serial.println(strURLAPI);    
     ClientHTTP.print(strURLAPI);
 
+//     _delay_ms(100);
      _delay_ms(200);
+     //_delay_ms(400);
+
     ClientHTTP.println("Connection: close");
     ClientHTTP.println();        
   }
@@ -748,26 +790,6 @@ bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String 
        pass(true);
        printLine();
     }       
-
-//  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
-//    String rispostaGetAte = "X";
-//    char c = ClientHTTP.read();
-//    RispostaHTTP = RispostaHTTP + c;
-//
-//    if ((RispostaHTTP.length() == HTTP_len_response) && (rispostaGetAte == "X"))
-//    {
-//      rispostaGetAte = GetHTTPResponseCode(RispostaHTTP);
-//      _delay_ms(80);
-//
-//      if (rispostaGetAte == "200") {
-//        valida = true;
-//        pass(true);
-//        printLine();
-//      }
-//      _delay_ms(50);
-//    }
-//  }
-  //_delay_ms(50);
   return valida;
 }
 
@@ -801,7 +823,8 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
     Serial.println(strURLAPI);
     
     ClientHTTP.print(strURLAPI);
-    _delay_ms(400);
+    _delay_ms(200);
+    //_delay_ms(500);
     
     ClientHTTP.println("Connection: close");
     ClientHTTP.println();    
@@ -834,26 +857,6 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
        pass(true);
        printLine();
     }     
-
-//  while ((ClientHTTP.available()) && (RispostaHTTP.length() < HTTP_len_response)) {
-//    String rispostaPOSTGAC = "99999";
-//    char c = ClientHTTP.read();
-//    RispostaHTTP = RispostaHTTP + c;
-//
-//    if ((RispostaHTTP.length() == HTTP_len_response) && (rispostaPOSTGAC == "99999"))
-//    {
-//      rispostaPOSTGAC = GetHTTPResponseCode(RispostaHTTP);
-//      _delay_ms(80);
-//
-//      if (rispostaPOSTGAC == "200") {
-//        valida = true;
-//        pass(true);
-//        printLine();
-//      }
-//      _delay_ms(80);
-//    }
-//  }
-//  _delay_ms(50);
   return valida;
 }
 
@@ -984,7 +987,11 @@ void Azzera()
   RispostaHTTP = "";
   impulsi = 0;
   alreadyTimbrata = false;
-  Carburante = "X";
+  //Carburante = "X";
+  mezzo.Carb = "X";
+  mezzo.TARGA = "X";
+  mezzo.KM = "0";
+  distr_selezionato = 0;
 
   Rele_Abilitazione1(1, 7);
   Rele_Abilitazione2(1, 7);
@@ -1024,7 +1031,7 @@ void Azzera()
   Serial.println("Azzera....... OK");
   printLine();
   TARGA = "";
-  stato_procedura = -2;
+  stato_procedura = -1;
 }
 
 void inputTarga(char T) {
@@ -1035,25 +1042,39 @@ void inputTarga(char T) {
       }
       break;
     case ('A'): {
-        TARGA = "";
-        righeDisplay[1] =  "AVVICINA TAG MEZZO"; // Set display per stato successivo
-        righeDisplay[2] =  "";
-        righeDisplay[3] = "";
-        avanzaStato(65);
+        if (TARGA.length() == 5) {
+          char buf[6];     
+          String w_TARGA = TARGA + "D";   
+          w_TARGA.toCharArray(buf, 7);
+          String mezzoString = scrivi_TAG_Mezzo(buf);
+          _delay_ms(10);          
+        }       
       }
       break;
     case ('B'): {
-        String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-        //String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-        _delay_ms(10);
+        if (TARGA.length() == 5) {
+          char buf[6];     
+          String w_TARGA = TARGA + "B";   
+          w_TARGA.toCharArray(buf, 7);
+          String mezzoString = scrivi_TAG_Mezzo(buf);
+          _delay_ms(10);          
+        }
+      }
+      break;
+    case ('*'): {
+        TARGA = "";
+        righeDisplay[1] =  "AVVICINA TAG MEZZO"; // Set display per stato successivo
+        righeDisplay[2] =  "";
+        righeDisplay[3] = "";        
+        avanzaStato(TselDistributore);
       }
       break;
     case ('C'): {
         if (TARGA.length() > 0) {
           TARGA = TARGA.substring(0, TARGA.length() - 1);
-          righeDisplay[1] =  "****** TARGA ******";
+          righeDisplay[1] =  "** TARGA MEZZO **";
           righeDisplay[2] = "TARGA:" + TARGA;
-          righeDisplay[3] = "#:Conferma A:Usa TAG";
+          righeDisplay[3] = "#:Conferma *:Usa TAG";
           displayLCD(righeDisplay, stato_procedura, 10);
         }
       }
@@ -1062,29 +1083,49 @@ void inputTarga(char T) {
         if (TARGA.length() == 5) {
           mezzo.TARGA = TARGA;
           RaccoltaDati[1] = mezzo.TARGA;
-          avanzaStato(65);
+          righeDisplay[1] = "SCEGLI DISTRIBUTORE";
+          righeDisplay[2] = "NERO:  POMPA 1";
+          righeDisplay[3] = "VERDE: POMPA 2";
+          avanzaStato(TselDistributore);
         }
       }
       break;
     default:  {
         TARGA += String(T);
         // _delay_ms(20);
-        righeDisplay[1] =  "****** TARGA ******";
+        righeDisplay[1] =  "** TARGA MEZZO **";
         righeDisplay[2] = "TARGA:" + TARGA;
-        righeDisplay[3] = "#:Conferma A:Usa TAG";
+        righeDisplay[3] = "#:Conferma *:Usa TAG";
         displayLCD(righeDisplay, stato_procedura, 10);
       }
       break;
   }
 }
 
-void inputKM(char T) {
+void inputKM(char KM_input) {
 
-  switch (T) {
+  switch (KM_input) {
     case ('N'): {
-        //  Serial.print("NIENTE");
+        //  Serial.print("NIENTE");        
       }
       break;
+    case ('A'): {
+        //  Serial.print("NIENTE");
+      }
+    break;
+    case ('B'): {
+        //  Serial.print("NIENTE");
+      }
+    break;
+    case ('.'): {
+        //  Serial.print("NIENTE");
+      }
+    break;
+    case ('*'): {
+        //  Serial.print("NIENTE");
+      }
+    break;
+
     case ('C'): {
         if (KM.length() > 0)
           KM = KM.substring(0, KM.length() - 1);
@@ -1106,12 +1147,12 @@ void inputKM(char T) {
           _delay_ms(2);
           enable_ETH();
           /*****************************************************************/
-          avanzaStato(120);
+          avanzaStato(TmaxErogazione);
         }
       }
       break;
     default:  {
-        KM += String(T);
+        KM += String(KM_input);
         //_delay_ms(20);
         righeDisplay[1] =  "****** KM ******";
         righeDisplay[2] = "KM:" + KM;
@@ -1254,55 +1295,48 @@ bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
  
  return true;
 }
-/******************************* EERPOM ***************************************/
-
 /**************************LOOP PROCEDURA************************************/
 void loop() {
 
   switch (stato_procedura) {
     case -2:
       { //cli(); // disable interrupt
-
-        righeDisplay[1] =  "";
-        righeDisplay[2] = "Setting....";
-        righeDisplay[3] =  "";
-
-        displayLCD(righeDisplay, stato_procedura, 100);
-        _delay_ms(200);
+        
+        printLine();
+        Serial.print("Parametri CCEC da EEPROM");
+        String ServerCCEC = read_eeprom_string_struct(ParametriCCEC[0]);
+        ServerCCEC.toCharArray(serverREST,ServerCCEC.length()+1);
+        // String IPCCEC = read_eeprom_string_struct(ParametriCCEC[1]);
+        String CSEDE = read_eeprom_string_struct(ParametriCCEC[3]);
+        CSEDE.toCharArray(CodSede,CSEDE.length()+1);
+        // app = read_eeprom_string_struct(ParametriCCEC[2]);
+        printLine();
         stato_procedura++;
       }
       break;
     case -1:
-      {
+      {       
+        _delay_ms(20);
         abilitaPulsanti();
         _delay_ms(20);
         abilitaContattiPistola();
+        _delay_ms(20);
         stato_procedura++;
       }
       break;
     case 0:
       {
-        righeDisplay[1] =  "";
-        righeDisplay[2] =  "";
-        righeDisplay[3] =  "";
-
-        //displayLCD(righeDisplay,stato_procedura,100);
-        _delay_ms(2000);
+        _delay_ms(1000);
         alreadyTimbrata = false;
-
         enable_ETH();
-
         /************************************************/
         righeDisplay[1] = " * AUTENTICAZIONE *";
         righeDisplay[2] = "";
         righeDisplay[3] = "    Avvicina ATE  ";
-
-        displayLCD(righeDisplay, stato_procedura, 100);
+        displayLCD(righeDisplay, stato_procedura, 50);
         /************************************************/
-
-        TinputTarga = 65;
         stato_procedura++;
-        _delay_ms(1000);
+        _delay_ms(500);
       }
       break;
     case 1:
@@ -1310,17 +1344,9 @@ void loop() {
         TARGA = "";
         KM = "";
 
-        /*****************************************
-          String ATe = "AABBCCDD";
-          RaccoltaDati[0] = ATe;
-          lcd.backlight();
-          lcd.display();
-          _delay_ms(10);
-          avanzaStato(TinputTarga);
-          /*****************************************/
-
         /*****************************************************/
         String ATe = "ERRORE";
+        
         if (!alreadyTimbrata) {
           ATe = GetCodeRfidATe();
           Buzzer(2, 100);
@@ -1334,7 +1360,7 @@ void loop() {
           Serial.print("***************************************************************");
           Serial.println("Riconoscimento Tessera .............");
 
-          // RaccoltaDati[0] = ATe;
+          //RaccoltaDati[0] = ATe;
           RaccoltaDati[0] = "DD92743A";
           // RaccoltaDati[5] = "000";
 
@@ -1346,65 +1372,40 @@ void loop() {
           righeDisplay[2] = ".....In Corso.....";
           //righeDisplay[3] = "   Rfid: " + ATe;
           righeDisplay[3] = "Attendere.........";
-
           displayLCD(righeDisplay, stato_procedura, 100);
-
           InizializzaEthernet();
-
           _delay_ms(1000); // tempo per inizializzare la ethernet
         }
 
         // Effettua chiamata REST per validare CARD NFC
-
-        lcd.clear();
-        righeDisplay[1] =  "****** TARGA ******";
+        
+        righeDisplay[1] =  "** TARGA MEZZO **";
         righeDisplay[2] = "TARGA:";
-        righeDisplay[3] = "#:Conferma A:Avanti";
-
-        // avanzaStato(65);
-        // RaccoltaDati[5] = "000";
+        righeDisplay[3] = "#:Conferma *:Usa TAG";
 
         // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
 
-        if (GetAteCheck(80,serverREST,clientATE,ATe)) {
+        if (GetAteCheck(80,serverREST,clientATE,ATe)) 
+        {
                 SET_BIT(PORTC,PC4);
                 RaccoltaDati[5] = "000";               
-                Buzzer(1,400);
-                displayLCD(righeDisplay,stato_procedura,10);
-                //_delay_ms(50);
-                avanzaStato(TinputTarga);} 
-         else
-              {
+                Buzzer(1,200);
+                _delay_ms(50);
+                avanzaStato(TinputTarga);
+         } 
+         else 
+         {
+                SET_BIT(PORTC,PC4);
                 RaccoltaDati[5] = "111";
                 Buzzer(3,200);
                 lcd.clear();
-                righeDisplay[1] =  "****** ERRORE ******";
-                righeDisplay[2] = "Ate NON VALIDA:";
+                righeDisplay[1] = "***** ERRORE ******";
+                righeDisplay[2] = "  Ate NON VALIDA ";
                 righeDisplay[3] = "";
                 displayLCD(righeDisplay,stato_procedura,10);
                 _delay_ms(1000);
                 Azzera();
-              }
-
-//              if (GetAteValidation(80,serverATE,clientATE,ATe))
-//              {
-//                RaccoltaDati[5] = "000";
-//                SET_BIT(PORTC,PC4);
-//                Buzzer(1,400);
-//                //displayLCD(righeDisplay,stato_procedura,10);
-//                _delay_ms(50);
-//                avanzaStato(TinputTarga);
-//              }
-//              else
-//              {
-//                RaccoltaDati[5] = "111";
-//                Buzzer(3,200);
-//                //displayLCD(righeDisplay,stato_procedura,10);
-//                _delay_ms(50);
-//                avanzaStato(TinputTarga);
-//                //Azzera();
-//              }
-       
+         }      
       }
       break;
     case 2:
@@ -1433,7 +1434,6 @@ void loop() {
         char T = getCharKeypad(int(z));
         _delay_ms(20);
         /*****************************************************************/
-
         inputTarga(T);
       }
       break;
@@ -1448,16 +1448,11 @@ void loop() {
           mezzo.Carb = "X";
           mezzo.TARGA = TARGA;
           mezzo.KM = "0";
-
-          righeDisplay[1] =  "****** DISTRIBUTORE ******";
-          righeDisplay[2] =  "";
-          righeDisplay[3] = "**** SCEGLI ****";
-
+          distr_selezionato = 0;
           avanzaStato(TselDistributore);
         }
         else {
-          //String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
-          String mezzoString = leggiTAG_Mezzo(true); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
+          String mezzoString = leggiTAG_Mezzo(false); // con TRUE scrive sul blocco 4 della card NFC DEL MEZZO
           _delay_ms(10);
 
           Serial.println(mezzoString);
@@ -1469,13 +1464,13 @@ void loop() {
           Serial.println("TIPO CARBURANTE: " + mezzo.Carb);
           Serial.println("TARGA: " + mezzo.TARGA);
 
-          Carburante = mezzo.Carb;
+//          Carburante = mezzo.Carb;
           if ((mezzo.Carb == "B") || (mezzo.Carb == "D")) {
             RaccoltaDati[1] = mezzo.TARGA;
             RaccoltaDati[2] = mezzo.Carb;
             righeDisplay[3] = "TARGA: " +  mezzo.TARGA;
-            displayLCD(righeDisplay, stato_procedura, 10);
             _delay_ms(500);
+            distr_selezionato = 0;
             avanzaStato(TselDistributore);
           }
         }
@@ -1483,37 +1478,37 @@ void loop() {
       break;
     case 4:
       {
-        righeDisplay[1] =  "****** DISTRIBUTORE ******";
-        righeDisplay[2] =  "";
-        righeDisplay[3] = "**** SCEGLI ****";
-
-        //displayLCD(righeDisplay,stato_procedura,100);
+        lcd.setCursor(0, 0);
+        lcd.print((char)1);  // STAMPA LA CLESSIDRA
+        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
 
         // Verifica scelta distributore
 
-        if (mezzo.Carb == "B")
+        if ((mezzo.Carb == "B") || (distr_selezionato == 2))
         {
           abilitaPulser('B');
+          mezzo.Carb = "B";
           Rele_Abilitazione2(0, 7); // chiudi relè
           StatoAttuale = "POMPA 2";
           RaccoltaDati[2] = mezzo.Carb;
-
           righeDisplay[1] =  "****** KM ******";
-          righeDisplay[2] = "KM:" + KM;
-          righeDisplay[3] = "#:Conferma";
-          avanzaStato(60);
+          righeDisplay[2] = "KM:";
+          righeDisplay[3] = "#:Conferma";       
+          _delay_ms(100);    
+          avanzaStato(TinputKM);
         }
-        else if (mezzo.Carb == "D")
+        else if ((mezzo.Carb == "D") || (distr_selezionato == 1))
         {
-          abilitaPulser('D');
+          mezzo.Carb = "D";
+          abilitaPulser('D');          
           Rele_Abilitazione1(0, 7); // chiudi relè
           StatoAttuale = "POMPA 1";
           RaccoltaDati[2] = mezzo.Carb;
-
           righeDisplay[1] =  "****** KM ******";
-          righeDisplay[2] = "KM:" + KM;
-          righeDisplay[3] = "#:Conferma";
-          avanzaStato(60);
+          righeDisplay[2] = "KM:";
+          righeDisplay[3] = "#:Conferma";      
+          _delay_ms(100);     
+          avanzaStato(TinputKM);
         }
       }
       break;
@@ -1522,8 +1517,7 @@ void loop() {
         lcd.setCursor(0, 0);
         lcd.print((char)1);  // STAMPA LA CLESSIDRA
         lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
-
-        // RaccoltaDati[4] = "1234";
+        // RaccoltaDati[4] = "1234";        
         /*****************************************************************/
         gpio.setCONFREG(0x3C);
         uint8_t c = gpio.Read_IP_REGISTER();
@@ -1536,11 +1530,11 @@ void loop() {
         char ris[8];
         uint8_t z = (r ^ c);
         itoa(z, ris, 2);
-        char T = getCharKeypad(int(z));
+        char K = getCharKeypad(int(z));
         _delay_ms(20);
         /*****************************************************************/
 
-        inputKM(T);
+        inputKM(K);
         impulsi = 0;
       }
       break;
@@ -1571,19 +1565,19 @@ void loop() {
 
         // CONTATTO PISTOLA DIESEL
 
-        if ((PINA & _BV(PA1)) && (Carburante == "D"))
+        if ((PINA & _BV(PA1)) && (mezzo.Carb == "D"))
         {
           RaccoltaDati[3] = String(lt);
           StatoAttuale = "STOP EROGAZIONE";
           Rele_Abilitazione2(1, 7); //  apri relè
           Rele_Abilitazione1(1, 7); //  apri relè
-          TOGGLE_BIT(PORTA, 1);
-          avanzaStato(10);
+          //TOGGLE_BIT(PORTA, 1);
+          avanzaStato(TmaxInviodati);
         }
 
         // CONTATTO PISTOLA BENZINA
 
-        if  ((PINB & _BV(PB1)) && (Carburante == "B"))
+        if  ((PINB & _BV(PB1)) && (mezzo.Carb == "B"))
         {
           RaccoltaDati[3] = String(lt);
 
@@ -1592,63 +1586,29 @@ void loop() {
           Rele_Abilitazione1(1, 7); //  apri relè
           avanzaStato(TmaxInviodati);
         }
-
-
       }
       break;
     case 7 :
       {
         righeDisplay[1] =  "";
         righeDisplay[2] = "Invio........";
-        righeDisplay[3] =  "";
+        righeDisplay[3] =  "";      
+        displayLCD(righeDisplay, stato_procedura, 100);
+        Messaggio = "";
 
-        //if (BIT_IS_CLEAR(PORTC, 4))   {
-          displayLCD(righeDisplay, stato_procedura, 10);
-          Messaggio = "";
+        for (int k = 0; k < 6; k++)
+          Messaggio.concat(RaccoltaDati[k] + ";");
 
-          for (int k = 0; k < 6; k++)
-            Messaggio.concat(RaccoltaDati[k] + ";");
-
-          Messaggio.concat(CodSede);
-          Serial.println("Messaggio:" + Messaggio);
-
-          // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
-
+        Messaggio.concat(CodSede);
+        Serial.println("Messaggio:" + Messaggio);
+         // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
           /*****************************************************************/
           disable_ETH();
           _delay_ms(2);
           enable_ETH();
           /*****************************************************************/
-
           _delay_ms(1000);
           avanzaStato(30); 
-
-//          if (PostErogazioneGAC(80, serverREST, clientLOCAL, Messaggio))
-//          {
-//            _delay_ms(200);
-//            Serial.println("PostErogazioneGAC - OK" );          
-//            // disable_ETH();
-//            Azzera();  
-//          }
-//          else
-//          {
-//             disable_ETH();   
-//             String ultima_indirizzo  = read_eeprom_string(Messaggio.length(),1035);
-//             int indirizzo = ultima_indirizzo.toInt();
-//            // bool write_eeprom_string(String erog,int lunBuffer,int start_ind)
-//            if (write_eeprom_string(Messaggio,Messaggio.length(),indirizzo))
-//              {
-//                Serial.println("WRITE OK AT address :" + String(indirizzo));
-//                indirizzo = indirizzo + 50;  
-//                if (indirizzo > 3000) {indirizzo = 2000; }   
-//                String update_ultima_indirizzo = String(indirizzo);
-//                if (write_eeprom_string(update_ultima_indirizzo,update_ultima_indirizzo.length(),1035))
-//                  Serial.println("UPDATE OK AT address :" + String(indirizzo));  
-//              }                
-//              Azzera();
-//              // avanzaStato(30);                       
-//          }                  
-        //}
       }
       break;
     case 8:
@@ -1678,7 +1638,7 @@ void loop() {
           else
           {
              disable_ETH();   
-             String ultima_indirizzo  = read_eeprom_string(Messaggio.length(),1035);
+             String ultima_indirizzo  = read_eeprom_string(4,1035);
              int indirizzo = ultima_indirizzo.toInt();
             // bool write_eeprom_string(String erog,int lunBuffer,int start_ind)
             if (write_eeprom_string(Messaggio,Messaggio.length(),indirizzo))
@@ -1688,7 +1648,7 @@ void loop() {
                 if (indirizzo > 3000) {indirizzo = 2000; }   
                 String update_ultima_indirizzo = String(indirizzo);
                 if (write_eeprom_string(update_ultima_indirizzo,update_ultima_indirizzo.length(),1035))
-                  Serial.println("UPDATE OK AT address :" + String(indirizzo));  
+                  Serial.println("UPDATE OK address :" + String(indirizzo));  
               }                
               Azzera();
               // avanzaStato(30);                       
@@ -1732,11 +1692,12 @@ void loop() {
 ISR(PCINT0_vect) {
   if (PINA & _BV(PA5)) {
     impulsi++;
-    _delay_ms(8.2);
+    my_delay_ms(debounceDelay);
+	//_delay_ms(8.20)
   }
   if (PINA & _BV(PA6)) {
     impulsi++;
-    _delay_ms(8.2);
+    my_delay_ms(debounceDelay);
   }
 }
 /***********************************************************************/
@@ -1749,20 +1710,12 @@ ISR(PCINT3_vect) {
   {
     if (PIND & _BV(PD6))
     {
-      intConsecutivePresses++;                      // increment counter for number of presses
+      intConsecutivePresses++;  // increment counter for number of presses           
       if (intConsecutivePresses >= NUM_OF_CONSECUTIVE_PRESSES)
       { // if enough presses to constitute a press
-        abilitaPulser('B');
-        Rele_Abilitazione2(0, 7); // chiudi relè
-        Carburante = "B";
-        RaccoltaDati[2] = Carburante;
-        StatoAttuale = "POMPA 2";
-        righeDisplay[1] =  "****** KM ******";
-        righeDisplay[2] = "KM:";
-        righeDisplay[3] = "#:Conferma";
-        avanzaStato(10);
         intConsecutivePresses = 0;                    // and reset press counts
-        intConsecutiveNonPresses = 0;
+        intConsecutiveNonPresses = 0;        
+        distr_selezionato = 2;
       }
     }
     else  {           // else if button is not pressed (logic low)
@@ -1774,21 +1727,13 @@ ISR(PCINT3_vect) {
     }
 
     if (PIND & _BV(PD7))
-    {
-      intConsecutivePresses++;                      // increment counter for number of presses
+    {      
+      intConsecutivePresses++;  // increment counter for number of presses
       if (intConsecutivePresses >= NUM_OF_CONSECUTIVE_PRESSES)
       { // if enough presses to constitute a press
-        abilitaPulser('D');
-        Rele_Abilitazione1(0, 7); // chiudi relè
-        Carburante = "D";
-        RaccoltaDati[2] = Carburante;
-        StatoAttuale = "POMPA 1";
-        righeDisplay[1] =  "****** KM ******";
-        righeDisplay[2] = "KM:";
-        righeDisplay[3] = "#:Conferma";
-        avanzaStato(10);
         intConsecutivePresses = 0;                    // and reset press counts
-        intConsecutiveNonPresses = 0;
+        intConsecutiveNonPresses = 0;        
+        distr_selezionato = 1;
       }
     }
     else  {            // else if button is not pressed (logic low)
