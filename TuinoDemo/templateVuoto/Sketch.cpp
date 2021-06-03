@@ -13,11 +13,11 @@
 #include <Ethernet2.h>
 #include <Keypad.h>
 #include <Wire.h>
-#include "NFC_PN532.h"
+#include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
-#include "PCA9534.h"
-#include "my_EEPROM.h"
+#include <PCA9534.h>
+#include <my_EEPROM.h>
 /*********************************************************************************************/
 
 static const uint8_t D42 = 42;
@@ -124,7 +124,7 @@ char CodSede[] = "SA1001";
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
 
-IPAddress ipCCEC(192, 168, 3, 2);
+IPAddress ipCCEC(192, 168, 3, 100);
 IPAddress myDns(192, 168, 1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
 IPAddress subnet(255, 255, 0, 0); // SUBNET
@@ -225,139 +225,6 @@ void pass(bool _status) {
   }
   printTab(1);
 }
-/******************************* EERPOM ***************************************/
-String read_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
-
-  String Salvata = "OK";
-  int lunBuffer = dato.da_memorizzare.length();
-  uint8_t buf[lunBuffer];
-  int i = 0;
-
-  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
-    buf[i] = EEPROM.read(ind);
-    //if (buf[i] != 0) {
-    //  Serial.print(" " +  String(buf[i]));
-    // }
-    i++;
-  }
-
-  Serial.println(" ");
-  Serial.println(" ");
-  Salvata = String((char *)buf);
-  Serial.print(dato.descrizione + ": ");
-  Serial.println(Salvata);
-  return Salvata;
-}
-
-bool write_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
-
-  int lunBuffer = dato.da_memorizzare.length();
-  char buf[lunBuffer];
-  dato.da_memorizzare.toCharArray(buf, lunBuffer + 1);
-  bool out = false;
-  int i = 0;
-
-  Serial.println(" len: " + String(lunBuffer));
-  Serial.println("Eseguo scrittura nella EEPROM");
-  Serial.println(" ");
-
-  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
-    if (buf[i] != 0) {
-      EEPROM.write(ind, buf[i]);
-      //Serial.print(" " + String(buf[i]));
-    }
-    i++;
-  }
-  Serial.println(" ");
-
-  return true;
-}
-
-void clearEEPROM(int ind_from,int ind_to) {
- Serial.println(" ");
- Serial.println(" ");
- Serial.println("Eseguo la clear della EEPROM");
- for (int i = ind_from ; i < ind_to ; i++) {
-   EEPROM.write(i, 0);
- }
- Serial.println("Clear completata");
- Serial.println(" ");
- Serial.println(" ");
-}
-
-String read_eeprom_string(int lunBuffer,int start_ind) {
-
- String Salvata = "OK";
- uint8_t buf[lunBuffer];
- int i = 0;
-
- Serial.println(" ");
- Serial.println("\r\n Fase di lettura");
- Serial.println(" ");
- 
- for (int ind = start_ind ;ind < (start_ind + lunBuffer);ind++) {
-    buf[i] = EEPROM.read(ind);
-    if (buf[i] != 0) {
-      Serial.print(" " +  String(buf[i])); 
-    }
-    i++;
-  }
-
- Serial.println(" ");
- Serial.println(" ");
- Salvata = String((char *)buf);
- Serial.print("Salvata nella EEPROM: ");
- Serial.println(Salvata);
- return Salvata;
-}
-
-String read_string_from_eeprom(int start_ind) {
-
- String Salvata = "";
- int ind = start_ind;
- Serial.println(" ");
- Serial.println("\r\n Fase di lettura");
- Serial.println(" ");
- 
-
- char c = EEPROM.read(ind);
- Salvata = Salvata + c;
- while(c != '\0') {
-    c = EEPROM.read(ind);
-    Salvata = Salvata + c;    
-    ind++;
- }
-
- Serial.println(" ");
- Serial.println(" ");
- Serial.print("Salvata nella EEPROM: ");
- Serial.println(Salvata);
- return Salvata;
-}
-
-bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
- 
- char buf[lunBuffer];
- erog.toCharArray(buf, erog.length()+1);
- bool out = false;
- int i = 0;
- 
- Serial.println(" len: " + String(lunBuffer));
- Serial.println("Eseguo scrittura nella EEPROM");
- Serial.println(" ");
-
-  for (int ind = start_ind ; ind < (start_ind + lunBuffer) ; ind++) {
-     if (buf[i] != 0) {
-      EEPROM.write(ind, buf[i]);
-      Serial.print(" " + String(buf[i]));
-     }
-       i++;
-  }
- Serial.println(" ");
- 
- return true;
-}
-
 /************************************************************/
 
 void setup() {
@@ -366,7 +233,7 @@ void setup() {
    _delay_ms(5);
    disable_ETH();
 
-   // Serial.begin(115200);
+    //Serial.begin(115200);
    _delay_ms(100);
 
   Serial.println(" inizio Setup ......");
@@ -382,11 +249,11 @@ void setup() {
 
   String app = "";
 
-  clearEEPROM(0,EEPROM.length());
-  if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
+//   clearEEPROM(0,EEPROM.length());
+//   if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+//   if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+//   if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+//   if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
 
   printLine();  
 /*******************************************************************************************/
@@ -1295,13 +1162,145 @@ void inputKM(char KM_input) {
       break;
   }
 }
+
+/******************************* EERPOM ***************************************/
+String read_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
+
+  String Salvata = "OK";
+  int lunBuffer = dato.da_memorizzare.length();
+  uint8_t buf[lunBuffer];
+  int i = 0;
+
+  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
+    buf[i] = EEPROM.read(ind);
+    //if (buf[i] != 0) {
+    //  Serial.print(" " +  String(buf[i]));
+    // }
+    i++;
+  }
+
+  Serial.println(" ");
+  Serial.println(" ");
+  Salvata = String((char *)buf);
+  Serial.print(dato.descrizione + ": ");
+  Serial.println(Salvata);
+  return Salvata;
+}
+
+bool write_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
+
+  int lunBuffer = dato.da_memorizzare.length();
+  char buf[lunBuffer];
+  dato.da_memorizzare.toCharArray(buf, lunBuffer + 1);
+  bool out = false;
+  int i = 0;
+
+  Serial.println(" len: " + String(lunBuffer));
+  Serial.println("Eseguo scrittura nella EEPROM");
+  Serial.println(" ");
+
+  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
+    if (buf[i] != 0) {
+      EEPROM.write(ind, buf[i]);
+      //Serial.print(" " + String(buf[i]));
+    }
+    i++;
+  }
+  Serial.println(" ");
+
+  return true;
+}
+
+void clearEEPROM(int ind_from,int ind_to) {
+ Serial.println(" ");
+ Serial.println(" ");
+ Serial.println("Eseguo la clear della EEPROM");
+ for (int i = ind_from ; i < ind_to ; i++) {
+   EEPROM.write(i, 0);
+ }
+ Serial.println("Clear completata");
+ Serial.println(" ");
+ Serial.println(" ");
+}
+
+String read_eeprom_string(int lunBuffer,int start_ind) {
+
+ String Salvata = "OK";
+ uint8_t buf[lunBuffer];
+ int i = 0;
+
+ Serial.println(" ");
+ Serial.println("\r\n Fase di lettura");
+ Serial.println(" ");
+ 
+ for (int ind = start_ind ;ind < (start_ind + lunBuffer);ind++) {
+    buf[i] = EEPROM.read(ind);
+    if (buf[i] != 0) {
+      Serial.print(" " +  String(buf[i])); 
+    }
+    i++;
+  }
+
+ Serial.println(" ");
+ Serial.println(" ");
+ Salvata = String((char *)buf);
+ Serial.print("Salvata nella EEPROM: ");
+ Serial.println(Salvata);
+ return Salvata;
+}
+
+String read_string_from_eeprom(int start_ind) {
+
+ String Salvata = "";
+ int ind = start_ind;
+ Serial.println(" ");
+ Serial.println("\r\n Fase di lettura");
+ Serial.println(" ");
+ 
+
+ char c = EEPROM.read(ind);
+ Salvata = Salvata + c;
+ while(c != '\0') {
+    c = EEPROM.read(ind);
+    Salvata = Salvata + c;    
+    ind++;
+ }
+
+ Serial.println(" ");
+ Serial.println(" ");
+ Serial.print("Salvata nella EEPROM: ");
+ Serial.println(Salvata);
+ return Salvata;
+}
+
+bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
+ 
+ char buf[lunBuffer];
+ erog.toCharArray(buf, erog.length()+1);
+ bool out = false;
+ int i = 0;
+ 
+ Serial.println(" len: " + String(lunBuffer));
+ Serial.println("Eseguo scrittura nella EEPROM");
+ Serial.println(" ");
+
+  for (int ind = start_ind ; ind < (start_ind + lunBuffer) ; ind++) {
+     if (buf[i] != 0) {
+      EEPROM.write(ind, buf[i]);
+      Serial.print(" " + String(buf[i]));
+     }
+       i++;
+  }
+ Serial.println(" ");
+ 
+ return true;
+}
 /**************************LOOP PROCEDURA************************************/
 void loop() {
 
   switch (stato_procedura) {
     case -2:
-      { //cli(); // disable interrupt
-        
+      { //cli(); // disable interrupt        
         printLine();
         Serial.print("Parametri CCEC da EEPROM");
         String ServerCCEC = read_eeprom_string_struct(ParametriCCEC[0]);
@@ -1309,10 +1308,10 @@ void loop() {
         printLine();
         String IPCCEC = read_eeprom_string_struct(ParametriCCEC[1]);
         printLine();
-        String CSEDE = read_eeprom_string_struct(ParametriCCEC[3]);        
-        CSEDE.toCharArray(CodSede,CSEDE.length()+1);
+        String Start_save = read_eeprom_string_struct(ParametriCCEC[2]);
         printLine();
-        String start_salva = read_eeprom_string_struct(ParametriCCEC[2]);
+        String CSEDE = read_eeprom_string_struct(ParametriCCEC[3]);
+        CSEDE.toCharArray(CodSede,CSEDE.length()+1);        
         printLine();
         stato_procedura++;
       }
@@ -1388,7 +1387,7 @@ void loop() {
 
         // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
 
-        if (1) // (GetAteCheck(80,serverREST,clientATE,ATe)) 
+        if (GetAteCheck(80,serverREST,clientATE,ATe)) 
         {
                 SET_BIT(PORTC,PC4);
                 RaccoltaDati[5] = "000";               
@@ -1467,7 +1466,6 @@ void loop() {
           Serial.println("TIPO CARBURANTE: " + mezzo.Carb);
           Serial.println("TARGA: " + mezzo.TARGA);
 
-          // Carburante = mezzo.Carb;
           if ((mezzo.Carb == "B") || (mezzo.Carb == "D")) {
             RaccoltaDati[1] = mezzo.TARGA;
             RaccoltaDati[2] = mezzo.Carb;
@@ -1635,8 +1633,13 @@ void loop() {
           {
             disable_ETH();
             _delay_ms(200);
-            Serial.println("PostErogazioneGAC - OK" );                      
-            Azzera();  
+            Serial.println("PostErogazioneGAC - OK" );   
+            Serial.println("Tento la ritrasmisssione di erogazioni salvate non trasmesse" );             
+            _delay_ms(2);
+            enable_ETH();
+            _delay_ms(2);
+            avanzaStato(60);                    
+            // Azzera();  
           }
           else
           {
@@ -1657,12 +1660,29 @@ void loop() {
               // avanzaStato(30);                       
           }                  
         }
-
       }
       break;
     case 9:
       {
-        
+             String ultima_indirizzo  = read_eeprom_string(4,1035);
+             int indirizzo = (ultima_indirizzo.toInt() - 50);
+             int start = 2000;
+             String e  = read_eeprom_string(50,start);
+             Serial.println("LETTO: " + e);
+             while ((PostErogazioneGAC(80, serverREST, clientLOCAL, e)) && (start < indirizzo))
+             // while (start < indirizzo)
+             {
+               start = start + 50;
+               Serial.println("LEGGO at address :" + String(start));
+               e  = read_eeprom_string(50,start);              
+               Serial.println("LETTO: " + e);
+               printLine();                
+             }
+             if (start >= indirizzo) {
+              clearEEPROM(2000,indirizzo);
+              write_eeprom_string("2000",4,1035);
+              }
+        Azzera();
       }
       break;
     case 100:
@@ -1695,13 +1715,11 @@ void loop() {
 ISR(PCINT0_vect) {
   if (PINA & _BV(PA5)) {
     impulsi++;
-    //_delay_ms(debounceDelay);
-    my_delay_ms(debounceDelay);
+    _delay_ms(8.20);
   }
   if (PINA & _BV(PA6)) {
     impulsi++;
-    //_delay_ms(debounceDelay);
-    my_delay_ms(debounceDelay);
+    _delay_ms(8.20);
   }
 }
 /***********************************************************************/

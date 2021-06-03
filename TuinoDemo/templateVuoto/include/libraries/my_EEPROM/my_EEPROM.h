@@ -26,7 +26,7 @@ ParametriCCEC_TypeDef *ParametriCCEC; //puntatore  a Map memoria
 
 ParametriCCEC_TypeDef Parametri[numero_parametri] =
 { {"DNS NAME SERVER\0", "ccec.no.dipvvf.it\0", 1000},
-  {"IPCCEC\0", "192.168.3.2\0", 1020},
-  {"Disponibile\0", "2000\0", 1035},
-  {"CodiceSede\0", "NO1001\0", 1040}
+  {"IP CCEC\0", "192.168.3.100\0", 1020},
+  {"Ultima Erogazione Salvata\0", "2000\0", 1035},
+  {"Codice Sede\0", "NO1001\0", 1040}
 };
