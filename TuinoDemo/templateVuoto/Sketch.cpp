@@ -13,11 +13,11 @@
 #include <Ethernet2.h>
 #include <Keypad.h>
 #include <Wire.h>
-#include "NFC_PN532.h"
+#include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
-#include "PCA9534.h"
-#include "my_EEPROM.h"
+#include <PCA9534.h>
+#include <my_EEPROM.h>
 /*********************************************************************************************/
 
 static const uint8_t D42 = 42;
@@ -124,14 +124,14 @@ char CodSede[] = "SA1001";
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
 
-IPAddress ipCCEC(192, 168, 0, 50);
+IPAddress ipCCEC(192, 168, 3, 100);
 IPAddress myDns(192, 168, 1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
 IPAddress subnet(255, 255, 0, 0); // SUBNET
 
 char serverATE[]  = "wbpate-test.dipvvf.it";
 char serverGAC[]  = "gacweb-test.dipvvf.it";
-char serverREST[] = "ccec.sa.dipvvf.it";
+char serverREST[] = "ccec.no.dipvvf.it";
 
 EthernetClient clientLOCAL;
 EthernetClient clientATE;
@@ -269,7 +269,7 @@ void setup() {
    _delay_ms(5);
    disable_ETH();
 
-   //Serial.begin(115200);
+   // Serial.begin(115200);
    _delay_ms(100);
 
   Serial.println(" inizio Setup ......");
@@ -1175,7 +1175,11 @@ void inputKM(char KM_input) {
       break;
     case ('#'): {
         if (KM.length() == 4) {
-          mezzo.KM = KM;
+	
+       	  if ( mezzo.Carb == "D" ) {Rele_Abilitazione1(0, 7);abilitaPulser('D');} // chiudi rel�
+          else if ( mezzo.Carb == "B" ) {Rele_Abilitazione2(0, 7); abilitaPulser('B');} // chiudi rel�
+          
+	        mezzo.KM = KM;
           RaccoltaDati[4] = mezzo.KM;
           righeDisplay[1] = "LITRI : 0.00";
           righeDisplay[2] = "imp :" + String(impulsi);
@@ -1489,9 +1493,9 @@ void loop() {
 
         if ((mezzo.Carb == "B") || (distr_selezionato == 2))
         {
-          abilitaPulser('B');
           mezzo.Carb = "B";
-          Rele_Abilitazione2(0, 7); // chiudi relè
+          // abilitaPulser('B');          
+          //Rele_Abilitazione2(0, 7); // chiudi relè
           StatoAttuale = "POMPA 2";
           RaccoltaDati[2] = mezzo.Carb;
           righeDisplay[1] =  "****** KM ******";
@@ -1503,8 +1507,8 @@ void loop() {
         else if ((mezzo.Carb == "D") || (distr_selezionato == 1))
         {
           mezzo.Carb = "D";
-          abilitaPulser('D');          
-          Rele_Abilitazione1(0, 7); // chiudi relè
+          //abilitaPulser('D');          
+          //Rele_Abilitazione1(0, 7); // chiudi relè
           StatoAttuale = "POMPA 1";
           RaccoltaDati[2] = mezzo.Carb;
           righeDisplay[1] =  "****** KM ******";
@@ -1571,7 +1575,7 @@ void loop() {
         if ((PINA & _BV(PA1)) && (mezzo.Carb == "D"))
         {
           RaccoltaDati[3] = String(lt);
-          // RaccoltaDati[3] = "5.50"; 
+          // RaccoltaDati[3] = "5.50";
           StatoAttuale = "STOP EROGAZIONE";
           Rele_Abilitazione2(1, 7); //  apri relè
           Rele_Abilitazione1(1, 7); //  apri relè
@@ -1589,12 +1593,12 @@ void loop() {
           Rele_Abilitazione2(1, 7); //  apri relè
           Rele_Abilitazione1(1, 7); //  apri relè
           avanzaStato(TmaxInviodati);
-        }
+        }        
       }
       break;
     case 7 :
       {
-        righeDisplay[1] =  "";
+        righeDisplay[1] =  StatoAttuale;
         righeDisplay[2] = "Invio........";
         righeDisplay[3] =  "";      
         displayLCD(righeDisplay, stato_procedura, 100);
@@ -1698,9 +1702,9 @@ void loop() {
   }
 
   nowTimer = DS3231M.now();
-  secs = nowTimer.secondstime();
-  if ((UltimoPassaggioStato + Timer - secs) <= 1) Azzera();
-
+  secs = nowTimer.secondstime();  
+  if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura != 6)) Azzera();
+  else if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura == 6)) avanzaStato(30);
 }
 
 /********************FINE LOOP PROCEDURA************************************/
@@ -1715,6 +1719,7 @@ void loop() {
 ***********************************************************************/
 
 ISR(PCINT0_vect) {
+  if ((stato_procedura == 6)) {
   if (PINA & _BV(PA5)) {
     impulsi++;
     my_delay_ms(debounceDelay);
@@ -1723,6 +1728,7 @@ ISR(PCINT0_vect) {
     impulsi++;
     my_delay_ms(debounceDelay);
   }
+ }
 }
 /***********************************************************************/
 
