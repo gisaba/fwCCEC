@@ -13,11 +13,11 @@
 #include <Ethernet2.h>
 #include <Keypad.h>
 #include <Wire.h>
-#include <NFC_PN532.h>
+#include "NFC_PN532.h"
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
-#include <PCA9534.h>
-#include <my_EEPROM.h>
+#include "PCA9534.h"
+#include "my_EEPROM.h"
 /*********************************************************************************************/
 
 static const uint8_t D42 = 42;
@@ -124,14 +124,14 @@ char CodSede[] = "SA1001";
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
 
-IPAddress ipCCEC(192, 168, 3, 100);
+IPAddress ipCCEC(192, 168, 0, 50);
 IPAddress myDns(192, 168, 1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
 IPAddress subnet(255, 255, 0, 0); // SUBNET
 
 char serverATE[]  = "wbpate-test.dipvvf.it";
 char serverGAC[]  = "gacweb-test.dipvvf.it";
-char serverREST[] = "ccec.no.dipvvf.it";
+char serverREST[] = "ccec.sa.dipvvf.it";
 
 EthernetClient clientLOCAL;
 EthernetClient clientATE;
@@ -225,6 +225,42 @@ void pass(bool _status) {
   }
   printTab(1);
 }
+
+bool write_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
+
+	int lunBuffer = dato.da_memorizzare.length();
+	char buf[lunBuffer];
+	dato.da_memorizzare.toCharArray(buf, lunBuffer + 1);
+	bool out = false;
+	int i = 0;
+
+	Serial.println(" len: " + String(lunBuffer));
+	Serial.println("Eseguo scrittura nella EEPROM");
+	Serial.println(" ");
+
+	for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
+		if (buf[i] != 0) {
+			EEPROM.write(ind, buf[i]);
+			//Serial.print(" " + String(buf[i]));
+		}
+		i++;
+	}
+	Serial.println(" ");
+
+	return true;
+}
+
+void clearEEPROM(int ind_from,int ind_to) {
+	Serial.println(" ");
+	Serial.println(" ");
+	Serial.println("Eseguo la clear della EEPROM");
+	for (int i = ind_from ; i < ind_to ; i++) {
+		EEPROM.write(i, 0);
+	}
+	Serial.println("Clear completata");
+	Serial.println(" ");
+	Serial.println(" ");
+}
 /************************************************************/
 
 void setup() {
@@ -233,7 +269,7 @@ void setup() {
    _delay_ms(5);
    disable_ETH();
 
-    //Serial.begin(115200);
+   //Serial.begin(115200);
    _delay_ms(100);
 
   Serial.println(" inizio Setup ......");
@@ -249,11 +285,11 @@ void setup() {
 
   String app = "";
 
-//   clearEEPROM(0,EEPROM.length());
-//   if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
+  clearEEPROM(0,EEPROM.length());
+  if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+  if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+  if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+  if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
 
   printLine();  
 /*******************************************************************************************/
@@ -771,6 +807,7 @@ bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String 
     lcd.setCursor(0, 3);
     lcd.print("Verificare....");
     _delay_ms(1000);
+    return false;
   }
 
   _delay_ms(10);
@@ -838,6 +875,7 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
     lcd.setCursor(0, 3);
     lcd.print("Verificare....");
     _delay_ms(1000);
+    return false;
   }
 
   _delay_ms(10);
@@ -1187,42 +1225,6 @@ String read_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
   return Salvata;
 }
 
-bool write_eeprom_string_struct(ParametriCCEC_TypeDef dato) {
-
-  int lunBuffer = dato.da_memorizzare.length();
-  char buf[lunBuffer];
-  dato.da_memorizzare.toCharArray(buf, lunBuffer + 1);
-  bool out = false;
-  int i = 0;
-
-  Serial.println(" len: " + String(lunBuffer));
-  Serial.println("Eseguo scrittura nella EEPROM");
-  Serial.println(" ");
-
-  for (int ind = dato.startIND ; ind < (dato.startIND + lunBuffer); ind++) {
-    if (buf[i] != 0) {
-      EEPROM.write(ind, buf[i]);
-      //Serial.print(" " + String(buf[i]));
-    }
-    i++;
-  }
-  Serial.println(" ");
-
-  return true;
-}
-
-void clearEEPROM(int ind_from,int ind_to) {
- Serial.println(" ");
- Serial.println(" ");
- Serial.println("Eseguo la clear della EEPROM");
- for (int i = ind_from ; i < ind_to ; i++) {
-   EEPROM.write(i, 0);
- }
- Serial.println("Clear completata");
- Serial.println(" ");
- Serial.println(" ");
-}
-
 String read_eeprom_string(int lunBuffer,int start_ind) {
 
  String Salvata = "OK";
@@ -1569,6 +1571,7 @@ void loop() {
         if ((PINA & _BV(PA1)) && (mezzo.Carb == "D"))
         {
           RaccoltaDati[3] = String(lt);
+          // RaccoltaDati[3] = "5.50"; 
           StatoAttuale = "STOP EROGAZIONE";
           Rele_Abilitazione2(1, 7); //  apri relè
           Rele_Abilitazione1(1, 7); //  apri relè
@@ -1638,8 +1641,7 @@ void loop() {
             _delay_ms(2);
             enable_ETH();
             _delay_ms(2);
-            avanzaStato(60);                    
-            // Azzera();  
+            avanzaStato(60);                                
           }
           else
           {
@@ -1656,32 +1658,32 @@ void loop() {
                 if (write_eeprom_string(update_ultima_indirizzo,update_ultima_indirizzo.length(),1035))
                   Serial.println("UPDATE OK address :" + String(indirizzo));  
               }                
-              Azzera();
-              // avanzaStato(30);                       
+              Azzera();              
           }                  
         }
       }
       break;
     case 9:
       {
-             String ultima_indirizzo  = read_eeprom_string(4,1035);
-             int indirizzo = (ultima_indirizzo.toInt() - 50);
+             String str_indirizzo  = read_eeprom_string(4,1035);
+             int ultimo_indirizzo = (str_indirizzo.toInt());
              int start = 2000;
-             String e  = read_eeprom_string(50,start);
-             Serial.println("LETTO: " + e);
-             while ((PostErogazioneGAC(80, serverREST, clientLOCAL, e)) && (start < indirizzo))
-             // while (start < indirizzo)
+             bool tx = false;
+             
+             while ((start < ultimo_indirizzo))
              {
-               start = start + 50;
-               Serial.println("LEGGO at address :" + String(start));
-               e  = read_eeprom_string(50,start);              
-               Serial.println("LETTO: " + e);
+               String e  = read_eeprom_string(50,start);
+               Serial.println("DA TRASMETTERE: " + e);
+               tx = PostErogazioneGAC(80, serverREST, clientLOCAL, e);
+               start = start + 50;    
+                _delay_ms(200); // Attendo un pochino tra un atrasmissione e l'altra           
                printLine();                
              }
-             if (start >= indirizzo) {
-              clearEEPROM(2000,indirizzo);
-              write_eeprom_string("2000",4,1035);
-              }
+             
+             if (start >  2000){
+                write_eeprom_string("2000",4,1035);
+                clearEEPROM(2000,start);
+              }              
         Azzera();
       }
       break;
@@ -1715,11 +1717,11 @@ void loop() {
 ISR(PCINT0_vect) {
   if (PINA & _BV(PA5)) {
     impulsi++;
-    _delay_ms(8.20);
+    my_delay_ms(debounceDelay);
   }
   if (PINA & _BV(PA6)) {
     impulsi++;
-    _delay_ms(8.20);
+    my_delay_ms(debounceDelay);
   }
 }
 /***********************************************************************/
