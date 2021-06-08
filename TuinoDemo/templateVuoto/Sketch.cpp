@@ -10,9 +10,9 @@
 #include <avr/interrupt.h>
 /*********************************************************************************************/
 #include <SPI.h>
+#include <Wire.h>
 #include <Ethernet2.h>
 #include <Keypad.h>
-#include <Wire.h>
 #include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
@@ -54,8 +54,13 @@ static inline void enable_ETH()    { PORTC &= ~(1 << PC4); } // Set 0 Bit 4 PORT
 static inline void enable_FLASH()  { PORTB &= ~(1 << PB4); } // Set 0 Bit 4 PORTB Register
 static inline void disable_ETH()   { PORTC |= (1 << PC4);  } // Set 1 Bit 4 PORTC Register
 static inline void disable_FLASH() { PORTB |= (1 << PB4);  } // Set 1 Bit 4 PORTB Register
+static inline void disable_LORA()  { PORTA |= (1 << PA4);  } // Set 1 Bit 4 PORTA Register
+static inline void disable_GSM()   { PORTD &= ~(1 << PD5); } // Set 0 Bit 5 PORTD Register
+static inline void disable_DTRGSM(){ PORTB |= (1 << PB0); } // Set 1 Bit 5 PORTD Register
+static inline void disable_WIFI()  { PORTB &= ~(1 << PB3);  } // Set 0 Bit 3 PORTB Register
+	
 /***********************************************************************************************/
-
+#define testbit(var, bit)	( (var & (1 <<(bit)))!=0 )
 #define BIT_IS_SET(byte, bit) (byte & (1 << bit))
 #define BIT_IS_CLEAR(byte, bit) (!(byte & (1 << bit)))
 #define SET_BIT(byte, bit) (byte |= (1 << bit))
@@ -65,6 +70,8 @@ static inline void disable_FLASH() { PORTB |= (1 << PB4);  } // Set 1 Bit 4 PORT
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 #define NUM_OF_CONSECUTIVE_PRESSES 1
 #define NUM_OF_CONSECUTIVE_NON_PRESSES 2
+#define stato_distributore 4
+#define stato_erogazione 7
 
 volatile int intConsecutivePresses = 0;
 volatile int intConsecutiveNonPresses = 0;
@@ -118,8 +125,9 @@ String righeDisplay[] = {"X", "X", "X", "X"};
 /**/    int ImpulsiLitro = 50;              /**/
 /**/    double debounceDelay = 8.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**/    double debounceDelayBenzina = 8.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
+/**/    int MaxErogabile = 200;				/**/
 /**********************************************/
-char CodSede[] = "SA1001";
+char CodSede[] = "NO1001";
 /********************************************************************************************/
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
@@ -154,7 +162,7 @@ unsigned long TverificaBadge = 60;        // 5 secondi
 unsigned long TinputTarga = 120;          // 120 Secondi
 unsigned long TinputKM = 120;             // 120 Secondi
 unsigned long TselDistributore = 120;     // 120 Secondi
-unsigned long TsgancioPistola = 300;      // 300 secondi
+unsigned long TsgancioPistola = 60;      // 300 secondi
 unsigned long TmaxErogazione = 360;       // 6 minuti
 unsigned long TmaxInviodati = 30;         // 30 Secondi
 unsigned long TmaxProgrammingMode = 30;   // 30 Secondi
@@ -265,13 +273,25 @@ void clearEEPROM(int ind_from,int ind_to) {
 
 void setup() {
 
-   initSS_ETH();
-   _delay_ms(5);
-   disable_ETH();
-
-   // Serial.begin(115200);
+   /************************************************************/
+   /*  DISABILITO PERIFERICHE								   */
+   /************************************************************/
    _delay_ms(100);
-
+   disable_ETH();
+   _delay_ms(100);
+   disable_FLASH();
+   _delay_ms(100);	
+   disable_DTRGSM();
+   _delay_ms(100);
+   disable_FLASH();
+   _delay_ms(100);
+   disable_LORA();
+   _delay_ms(100);
+   disable_WIFI();
+   _delay_ms(100);
+   
+  // Serial.begin(115200);
+  _delay_ms(100);
   Serial.println(" inizio Setup ......");
   printLine();
 
@@ -285,11 +305,11 @@ void setup() {
 
   String app = "";
 
-  clearEEPROM(0,EEPROM.length());
-  if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
-  if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
+//   clearEEPROM(0,EEPROM.length());
+//   if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+//   if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+//   if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+//   if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
 
   printLine();  
 /*******************************************************************************************/
@@ -352,7 +372,7 @@ void setup() {
   nfc.SAMConfig();
   printLine();
   
-  /*************************** RTC ************************/
+  /*************************** RTC **********************************/
   while (!DS3231M.begin()) {
     Serial.println(F("non trovo modulo RTC DS3231MM. Riprovo tra 3s."));
     _delay_ms(1000);
@@ -368,14 +388,14 @@ void setup() {
   Wire.begin(); // join i2c bus (address optional for master)
   Wire.beginTransmission(0x28);  // (0x50) POTENZIOMETRO U11
   Wire.write(byte(0x00));        // Wiper Register
-  Wire.write(50);                // Valore del potenziomentro circa 6 volt
+  Wire.write(0x00);              // Valore del potenziomentro
   Wire.endTransmission();
 
   _delay_ms(50);
 
   Wire.beginTransmission(0x52);  // (0x52) POTENZIOMETRO U12
   Wire.write(byte(0x00));        // Wiper Register
-  Wire.write(50);                // Valore del potenziomentro circa 6 volt
+  Wire.write(80);                // Valore del potenziomentro circa 6 volt
   Wire.endTransmission();
   Wire.end();
   Serial.println("POTENZIOMETRI OK");
@@ -1176,20 +1196,31 @@ void inputKM(char KM_input) {
     case ('#'): {
         if (KM.length() == 4) {
 	
-       	  if ( mezzo.Carb == "D" ) {Rele_Abilitazione1(0, 7);abilitaPulser('D');} // chiudi rel�
-          else if ( mezzo.Carb == "B" ) {Rele_Abilitazione2(0, 7); abilitaPulser('B');} // chiudi rel�
+       	  if ( mezzo.Carb == "D" ) {
+				 Rele_Abilitazione1(0, 7);
+				 abilitaPulser('D');
+				 righeDisplay[3] = "POMPA 1";
+			} // chiudi relè
+          else if ( mezzo.Carb == "B" ) {
+				 Rele_Abilitazione2(0, 7); 
+				 abilitaPulser('B');
+			     righeDisplay[3] = "POMPA 2";
+			} // chiudi relè
           
 	        mezzo.KM = KM;
           RaccoltaDati[4] = mezzo.KM;
-          righeDisplay[1] = "LITRI : 0.00";
-          righeDisplay[2] = "imp :" + String(impulsi);
-          righeDisplay[3] = "Erogazione: " + StatoAttuale;
+		  righeDisplay[1] = "SGANCIA PISTOLA";
+		  righeDisplay[2] = "";
+//		  righeDisplay[3] = "";
+//           righeDisplay[1] = "LITRI : 0.00";
+//           righeDisplay[2] = "imp :" + String(impulsi);
+//           righeDisplay[3] = "Erogazione: " + StatoAttuale;
           /*****************************************************************/
           disable_ETH();
           _delay_ms(2);
           enable_ETH();
           /*****************************************************************/
-          avanzaStato(TmaxErogazione);
+          avanzaStato(TsgancioPistola);
         }
       }
       break;
@@ -1306,7 +1337,7 @@ void loop() {
 
   switch (stato_procedura) {
     case -2:
-      { //cli(); // disable interrupt        
+      { // cli(); // disable interrupt        
         printLine();
         Serial.print("Parametri CCEC da EEPROM");
         String ServerCCEC = read_eeprom_string_struct(ParametriCCEC[0]);
@@ -1545,7 +1576,33 @@ void loop() {
         impulsi = 0;
       }
       break;
-    case 6:
+	case 6: 
+	{ 
+		lcd.setCursor(0, 0);
+		lcd.print((char)1);  // STAMPA LA CLESSIDRA
+		lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+		 
+		if (testbit(PINA,1) && (mezzo.Carb == "D"))
+		{
+            righeDisplay[1] = "LITRI : 0.00";
+ 		    righeDisplay[2] = "imp :" + String(impulsi);
+ 			righeDisplay[3] = "Erogazione: " + StatoAttuale;
+			avanzaStato(TmaxErogazione); 
+		}
+		
+		// CONTATTO PISTOLA BENZINA
+
+		if  (testbit(PINB,1) && (mezzo.Carb == "B"))
+		{
+             righeDisplay[1] = "LITRI : 0.00";
+             righeDisplay[2] = "imp :" + String(impulsi);
+             righeDisplay[3] = "Erogazione: " + StatoAttuale;
+             avanzaStato(TmaxErogazione);
+		}
+		 
+	}
+	break;
+    case 7:
       {
         lcd.setCursor(0, 0);
         lcd.print((char)1);  // STAMPA LA CLESSIDRA
@@ -1572,7 +1629,8 @@ void loop() {
 
         // CONTATTO PISTOLA DIESEL
 
-        if ((PINA & _BV(PA1)) && (mezzo.Carb == "D"))
+        //if ((PINA & _BV(PA1)) && (mezzo.Carb == "D"))
+		if (!testbit(PINA,1) && (mezzo.Carb == "D"))
         {
           RaccoltaDati[3] = String(lt);
           // RaccoltaDati[3] = "5.50";
@@ -1585,7 +1643,8 @@ void loop() {
 
         // CONTATTO PISTOLA BENZINA
 
-        if  ((PINB & _BV(PB1)) && (mezzo.Carb == "B"))
+        //if  ((PINB & _BV(PB1)) && (mezzo.Carb == "B"))
+		if (!testbit(PINB,1) && (mezzo.Carb == "B"))
         {
           RaccoltaDati[3] = String(lt);
 
@@ -1596,7 +1655,7 @@ void loop() {
         }        
       }
       break;
-    case 7 :
+    case 8 :
       {
         righeDisplay[1] =  StatoAttuale;
         righeDisplay[2] = "Invio........";
@@ -1619,7 +1678,7 @@ void loop() {
           avanzaStato(30); 
       }
       break;
-    case 8:
+    case 9:
       {        
         if (BIT_IS_CLEAR(PORTC, 4))
         {
@@ -1667,7 +1726,7 @@ void loop() {
         }
       }
       break;
-    case 9:
+    case 10:
       {
              String str_indirizzo  = read_eeprom_string(4,1035);
              int ultimo_indirizzo = (str_indirizzo.toInt());
@@ -1719,15 +1778,18 @@ void loop() {
 ***********************************************************************/
 
 ISR(PCINT0_vect) {
-  if ((stato_procedura == 6)) {
-  if (PINA & _BV(PA5)) {
-    impulsi++;
-    my_delay_ms(debounceDelay);
-  }
-  if (PINA & _BV(PA6)) {
-    impulsi++;
-    my_delay_ms(debounceDelay);
-  }
+  if ((stato_procedura == stato_erogazione)) //&& ((impulsi/ImpulsiLitro) > MaxErogabile))
+  {
+	  
+	  if (PINA & _BV(PA5)) {
+		impulsi++;
+		my_delay_ms(debounceDelay);
+	  }
+	  
+	  if (PINA & _BV(PA6)) {
+		impulsi++;
+		my_delay_ms(debounceDelay);
+	  }
  }
 }
 /***********************************************************************/
@@ -1736,7 +1798,7 @@ ISR(PCINT0_vect) {
 
 ISR(PCINT3_vect) {
 
-  if (stato_procedura == 4)
+  if (stato_procedura == stato_distributore)
   {
     if (PIND & _BV(PD6))
     {
