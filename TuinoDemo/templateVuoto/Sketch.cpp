@@ -122,7 +122,7 @@ String Messaggio = "";
 String righeDisplay[] = {"X", "X", "X", "X"};
 
 /************* PULSER *************************/
-/**/    int ImpulsiLitro = 50;              /**/
+/**/    int ImpulsiLitro = 100;              /**/
 /**/    double debounceDelay = 8.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**/    double debounceDelayBenzina = 8.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
 /**/    int MaxErogabile = 200;				/**/
@@ -388,7 +388,7 @@ void setup() {
   Wire.begin(); // join i2c bus (address optional for master)
   Wire.beginTransmission(0x28);  // (0x50) POTENZIOMETRO U11
   Wire.write(byte(0x00));        // Wiper Register
-  Wire.write(0x00);              // Valore del potenziomentro
+  Wire.write(80);              // Valore del potenziomentro
   Wire.endTransmission();
 
   _delay_ms(50);
@@ -944,12 +944,14 @@ void abilitaPulser(char p_carburante)
 
   if (p_carburante == 'D')
   {
-    DDRA &= ~(1 << PA5);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
+    //DDRA &= ~(1 << PA5);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
+	DDRA &= ~(1 << PULSER1);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
     PCMSK0 = 0b00100000;  // pulser 1 PCINT5
   }
   else
   {
-    DDRA &= ~(1 << PA6);  // PULSER 2 clear DDRA bit 5, sets PA5 for input
+    //DDRA &= ~(1 << PA6);  // PULSER 2 clear DDRA bit 5, sets PA5 for input
+	DDRA &= ~(1 << PULSER2);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
     PCMSK0 = 0b01000000;  // pulser 2 PCINT6
   }
 
@@ -966,8 +968,8 @@ void ContaImpulsi()
 
 double impulsiToLitri(int P_impulsi)
 {
-  //double imp = (double)(P_impulsi-1);
-  double imp = (double)(P_impulsi);
+  double imp = (double)(P_impulsi-1);
+  //double imp = (double)(P_impulsi);
   if (imp < 0) {
     imp = 0;
   }
@@ -1781,14 +1783,12 @@ ISR(PCINT0_vect) {
   if ((stato_procedura == stato_erogazione)) //&& ((impulsi/ImpulsiLitro) > MaxErogabile))
   {
 	  
-	  if (PINA & _BV(PA5)) {
+	  if ((PINA & _BV(PA5)) && (mezzo.Carb == "D")) {
 		impulsi++;
-		my_delay_ms(debounceDelay);
 	  }
 	  
-	  if (PINA & _BV(PA6)) {
+      if ((PINA & _BV(PA6)) && (mezzo.Carb == "B")) {
 		impulsi++;
-		my_delay_ms(debounceDelay);
 	  }
  }
 }
