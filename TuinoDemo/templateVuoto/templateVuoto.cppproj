@@ -187,6 +187,7 @@
             <Value>..\include\libraries\WiFi\src\utility</Value>
             <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
             <Value>..\include\libraries\DS3231M\src</Value>
+            <Value>..\include\libraries\EEPROM\src</Value>
           </ListValues>
         </avrgcc.compiler.directories.IncludePaths>
         <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
@@ -291,6 +292,7 @@
             <Value>..\include\libraries\WiFi\src\utility</Value>
             <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
             <Value>..\include\libraries\DS3231M\src</Value>
+            <Value>..\include\libraries\EEPROM\src</Value>
           </ListValues>
         </avrgcccpp.compiler.directories.IncludePaths>
         <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
@@ -418,6 +420,7 @@
             <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
             <Value>..\include\libraries\DS3231M\src</Value>
             <Value>../include/libraries/NFC-PN532</Value>
+            <Value>..\include\libraries\EEPROM\src</Value>
           </ListValues>
         </avrgcc.compiler.directories.IncludePaths>
         <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
@@ -521,6 +524,8 @@
             <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
             <Value>..\include\libraries\DS3231M\src</Value>
             <Value>../include/libraries/NFC-PN532</Value>
+            <Value>../include/libraries/my_EEPROM</Value>
+            <Value>..\include\libraries\EEPROM\src</Value>
           </ListValues>
         </avrgcccpp.compiler.directories.IncludePaths>
         <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
@@ -546,7 +551,13 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="include\libraries\EEPROM\src\EEPROM.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="include\libraries\Keypad\src\PCA9534.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="include\libraries\my_EEPROM\my_EEPROM.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\libraries\NFC-PN532\NFC_PN532.h">
@@ -688,6 +699,9 @@
   <ItemGroup>
     <Folder Include="include\" />
     <Folder Include="include\libraries\" />
+    <Folder Include="include\libraries\EEPROM\" />
+    <Folder Include="include\libraries\EEPROM\src\" />
+    <Folder Include="include\libraries\my_EEPROM" />
     <Folder Include="include\libraries\NFC-PN532" />
     <Folder Include="include\libraries\DS3231M\" />
     <Folder Include="include\libraries\DS3231M\src\" />

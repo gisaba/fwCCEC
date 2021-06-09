@@ -17,8 +17,9 @@
 byte pn532ack[] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
 byte pn532response_firmwarevers[] = {0x00, 0xFF, 0x06, 0xFA, 0xD5, 0x03};
 
-
+// If using Native Port on Arduino Zero or Due define as SerialUSB
 #define PN532DEBUGPRINT Serial
+//#define PN532DEBUGPRINT SerialUSB
 
 #define PN532_PACKBUFFSIZ 64
 byte pn532_packetbuffer[PN532_PACKBUFFSIZ];
@@ -36,7 +37,11 @@ byte pn532_packetbuffer[PN532_PACKBUFFSIZ];
 /**************************************************************************/
 static inline void i2c_send(uint8_t x)
 {
+ // #if ARDUINO >= 100
     WIRE.write((uint8_t)x);
+ // #else
+ //   WIRE.send(x);
+ // #endif
 }
 
 /**************************************************************************/
@@ -46,7 +51,11 @@ static inline void i2c_send(uint8_t x)
 /**************************************************************************/
 static inline uint8_t i2c_recv(void)
 {
-     return WIRE.read();
+ // #if ARDUINO >= 100
+    return WIRE.read();
+//  #else
+//    return WIRE.receive();
+//  #endif
 }
 
 
@@ -59,7 +68,11 @@ static inline uint8_t i2c_recv(void)
     @param  reset     Location of the RSTPD_N pin
 */
 /**************************************************************************/
-NFC_PN532::NFC_PN532(uint8_t irq, uint8_t reset):  
+NFC_PN532::NFC_PN532(uint8_t irq, uint8_t reset):
+  /*_clk(0),
+  _miso(0),
+  _mosi(0),
+  _ss(0),*/
   _irq(irq),
   _reset(reset),
   _usingSPI(false),
@@ -83,9 +96,9 @@ void NFC_PN532::begin() {
     // Reset the PN532
     digitalWrite(_reset, HIGH);
     digitalWrite(_reset, LOW);
-    _delay_ms(400);
+    delay(400);
     digitalWrite(_reset, HIGH);
-    _delay_ms(10);  // Small _delay_ms required before taking other actions after reset.
+    delay(10);  // Small delay required before taking other actions after reset.
                 // See timing diagram on page 209 of the datasheet, section 12.23.
 }
 
@@ -248,6 +261,14 @@ bool NFC_PN532::sendCommandCheckAck(uint8_t *cmd, uint8_t cmdlen, uint16_t timeo
       PN532DEBUGPRINT.println(F("No ACK frame received!"));
     #endif
     return false;
+  }
+
+  // For SPI only wait for the chip to be ready again.
+  // This is unnecessary with I2C.
+  if (_usingSPI) {
+    if (!waitready(timeout)) {
+      return false;
+    }
   }
 
   return true; // ack'd command
@@ -853,7 +874,7 @@ uint8_t NFC_PN532::mifareclassic_WriteDataBlock (uint8_t blockNumber, uint8_t * 
     #endif
     return 0;
   }
-  _delay_ms(10);
+  delay(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
@@ -1099,7 +1120,7 @@ uint8_t NFC_PN532::mifareultralight_WritePage (uint8_t page, uint8_t * data)
     // Return Failed Signal
     return 0;
   }
-  _delay_ms(10);
+  delay(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
@@ -1243,7 +1264,7 @@ uint8_t NFC_PN532::ntag2xx_WritePage (uint8_t page, uint8_t * data)
     // Return Failed Signal
     return 0;
   }
-  _delay_ms(10);
+  delay(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
@@ -1404,7 +1425,7 @@ bool NFC_PN532::waitready(uint16_t timeout) {
         return false;
       }
     }
-    _delay_ms(10);
+    delay(10);
   }
   return true;
 }
@@ -1422,7 +1443,7 @@ void NFC_PN532::readdata(uint8_t* buff, uint8_t n) {
      // I2C write.
     uint16_t timer = 0;
 
-    _delay_ms(2);
+    delay(2);
 
     #ifdef PN532DEBUG
       PN532DEBUGPRINT.print(F("Reading: "));
@@ -1432,7 +1453,7 @@ void NFC_PN532::readdata(uint8_t* buff, uint8_t n) {
     // Discard the leading 0x01
     i2c_recv();
     for (uint8_t i=0; i<n; i++) {
-      _delay_ms(1);
+      delay(1);
       buff[i] = i2c_recv();
       #ifdef PN532DEBUG
         PN532DEBUGPRINT.print(F(" 0x"));
@@ -1467,7 +1488,7 @@ void NFC_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen) {
       PN532DEBUGPRINT.print(F("\nSending: "));
     #endif
 
-    _delay_ms(2);     // or whatever the _delay_ms is for waking up the board
+    delay(2);     // or whatever the delay is for waking up the board
 
     // I2C START
     WIRE.beginTransmission(PN532_I2C_ADDRESS);
@@ -1511,4 +1532,4 @@ void NFC_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen) {
       PN532DEBUGPRINT.println();
     #endif
 }
-
+/************** low level SPI */
