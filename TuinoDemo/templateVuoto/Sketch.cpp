@@ -107,7 +107,7 @@ int InviaTarga = LOW;       // Semaforo Validazione Targa/Km Mezzo
 int SgancioPistola = HIGH;  // Stato Contatto Pistola
 int GO = LOW;               // Semaforo Generale
 int stato_procedura = 0;    // Stato del Sistema
-volatile int impulsi = 0;   // Variabile per il conteggio degli impulsi generati dal pulser
+volatile uint16_t impulsi = 0;   // Variabile per il conteggio degli impulsi generati dal pulser
 
 uint8_t distr_selezionato = 0;
 /*** GESTIONE HTTP REQUEST ***/
@@ -122,10 +122,10 @@ String Messaggio = "";
 String righeDisplay[] = {"X", "X", "X", "X"};
 
 /************* PULSER *************************/
-/**/    int ImpulsiLitro = 100;              /**/
-/**/    double debounceDelay = 8.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
-/**/    double debounceDelayBenzina = 8.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
-/**/    int MaxErogabile = 200;				/**/
+/**/  int ImpulsiLitro = 100;              /**/
+//    double debounceDelay = 8.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
+//    double debounceDelayBenzina = 8.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
+/**/  uint16_t MaxErogabile = 100000;				/**/
 /**********************************************/
 char CodSede[] = "NO1001";
 /********************************************************************************************/
@@ -158,12 +158,12 @@ DateTime nowTimer;
 /********************************************************************************************/
 /*                     Timer avanzamento stati
 /********************************************************************************************/
-unsigned long TverificaBadge = 60;        // 5 secondi
+unsigned long TverificaBadge = 60;        // 60 secondi
 unsigned long TinputTarga = 120;          // 120 Secondi
 unsigned long TinputKM = 120;             // 120 Secondi
 unsigned long TselDistributore = 120;     // 120 Secondi
-unsigned long TsgancioPistola = 60;      // 300 secondi
-unsigned long TmaxErogazione = 360;       // 6 minuti
+unsigned long TsgancioPistola = 60;       // 60 secondi
+unsigned long TmaxErogazione = 600;       // 10 minuti
 unsigned long TmaxInviodati = 30;         // 30 Secondi
 unsigned long TmaxProgrammingMode = 30;   // 30 Secondi
 unsigned long TmaxSalvataggio = 30;       // 30 Secondi
@@ -289,7 +289,7 @@ void setup() {
    _delay_ms(100);
    disable_WIFI();
    _delay_ms(100);
-   
+   /*******************************************************************************************/
   // Serial.begin(115200);
   _delay_ms(100);
   Serial.println(" inizio Setup ......");
@@ -422,9 +422,9 @@ void Buzzer(uint8_t p_ripeti, uint32_t p_delay_suono) {
 
   for (int volte = 0; volte < p_ripeti; volte++)
   {
-    // TOGGLE_BIT(PORTC,BUZZER);
+    TOGGLE_BIT(PORTC,BUZZER);
     my_delay_ms(p_delay_suono);
-    // TOGGLE_BIT(PORTC,BUZZER);
+    TOGGLE_BIT(PORTC,BUZZER);
   }
 }
 
@@ -940,8 +940,10 @@ void abilitaContattiPistola() {
 
 void abilitaPulser(char p_carburante)
 {
-  PCICR =  0b00000001;
+   _delay_ms(1000);
 
+  PCICR =  0b00000001;
+ 
   if (p_carburante == 'D')
   {
     //DDRA &= ~(1 << PA5);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
@@ -954,22 +956,14 @@ void abilitaPulser(char p_carburante)
 	DDRA &= ~(1 << PULSER2);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
     PCMSK0 = 0b01000000;  // pulser 2 PCINT6
   }
-
   sei();            // enable interrupts
 };
 
-void ContaImpulsi()
-{  
-  {
-    impulsi++;   
-    my_delay_ms(debounceDelay);
-  }
-}
 
 double impulsiToLitri(int P_impulsi)
 {
-  double imp = (double)(P_impulsi-1);
-  //double imp = (double)(P_impulsi);
+  //double imp = (double)(P_impulsi-1);
+  double imp = (double)(P_impulsi);
   if (imp < 0) {
     imp = 0;
   }
@@ -1152,6 +1146,7 @@ void inputTarga(char T) {
       break;
     default:  {
         TARGA += String(T);
+		Buzzer(1,10);
         // _delay_ms(20);
         righeDisplay[1] =  "** TARGA MEZZO **";
         righeDisplay[2] = "TARGA:" + TARGA;
@@ -1197,15 +1192,14 @@ void inputKM(char KM_input) {
       break;
     case ('#'): {
         if (KM.length() == 4) {
-	
        	  if ( mezzo.Carb == "D" ) {
 				 Rele_Abilitazione1(0, 7);
-				 abilitaPulser('D');
+				 //abilitaPulser('D');
 				 righeDisplay[3] = "POMPA 1";
 			} // chiudi relè
           else if ( mezzo.Carb == "B" ) {
 				 Rele_Abilitazione2(0, 7); 
-				 abilitaPulser('B');
+				 //abilitaPulser('B');
 			     righeDisplay[3] = "POMPA 2";
 			} // chiudi relè
           
@@ -1213,11 +1207,7 @@ void inputKM(char KM_input) {
           RaccoltaDati[4] = mezzo.KM;
 		  righeDisplay[1] = "SGANCIA PISTOLA";
 		  righeDisplay[2] = "";
-//		  righeDisplay[3] = "";
-//           righeDisplay[1] = "LITRI : 0.00";
-//           righeDisplay[2] = "imp :" + String(impulsi);
-//           righeDisplay[3] = "Erogazione: " + StatoAttuale;
-          /*****************************************************************/
+         /*****************************************************************/
           disable_ETH();
           _delay_ms(2);
           enable_ETH();
@@ -1228,6 +1218,7 @@ void inputKM(char KM_input) {
       break;
     default:  {
         KM += String(KM_input);
+		Buzzer(1,10);
         //_delay_ms(20);
         righeDisplay[1] =  "****** KM ******";
         righeDisplay[2] = "KM:" + KM;
@@ -1431,7 +1422,7 @@ void loop() {
                 SET_BIT(PORTC,PC4);
                 RaccoltaDati[5] = "000";               
                 Buzzer(1,200);
-                _delay_ms(50);
+//                _delay_ms(50);
                 avanzaStato(TinputTarga);
          } 
          else 
@@ -1442,7 +1433,7 @@ void loop() {
                 lcd.clear();
                 righeDisplay[1] = "***** ERRORE ******";
                 righeDisplay[2] = "  Ate NON VALIDA ";
-                righeDisplay[3] = "";
+                righeDisplay[3] = " Problema di Rete";
                 displayLCD(righeDisplay,stato_procedura,10);
                 _delay_ms(1000);
                 Azzera();
@@ -1548,7 +1539,7 @@ void loop() {
           righeDisplay[2] = "KM:";
           righeDisplay[3] = "#:Conferma";      
           _delay_ms(100);     
-          avanzaStato(TinputKM);
+         avanzaStato(TinputKM);
         }
       }
       break;
@@ -1586,9 +1577,13 @@ void loop() {
 		 
 		if (testbit(PINA,1) && (mezzo.Carb == "D"))
 		{
+			cli(); // GLOBAL INTERRUPT DISABLE
             righeDisplay[1] = "LITRI : 0.00";
- 		    righeDisplay[2] = "imp :" + String(impulsi);
+			righeDisplay[2] = "TARGA:" + mezzo.TARGA;
+ 		    // righeDisplay[2] = "imp :" + String(impulsi);
  			righeDisplay[3] = "Erogazione: " + StatoAttuale;
+			abilitaPulser('D');
+			impulsi = 0;
 			avanzaStato(TmaxErogazione); 
 		}
 		
@@ -1596,9 +1591,13 @@ void loop() {
 
 		if  (testbit(PINB,1) && (mezzo.Carb == "B"))
 		{
+			 cli(); // GLOBAL INTERRUPT DISABLE
              righeDisplay[1] = "LITRI : 0.00";
-             righeDisplay[2] = "imp :" + String(impulsi);
+			 righeDisplay[2] = "TARGA:" + mezzo.TARGA;
+             // righeDisplay[2] = "imp :" + String(impulsi);
              righeDisplay[3] = "Erogazione: " + StatoAttuale;
+			 abilitaPulser('B');
+			 impulsi = 0;
              avanzaStato(TmaxErogazione);
 		}
 		 
@@ -1619,7 +1618,8 @@ void loop() {
         double lt = impulsiToLitri(impulsi);
 
         righeDisplay[1] = "LITRI :" + String(lt);
-        righeDisplay[2] = "imp :" + String(impulsi);
+		righeDisplay[2] = "TARGA:" + mezzo.TARGA;
+        //righeDisplay[2] = "imp :" + String(impulsi);
         righeDisplay[3] = "Erogazione: " + StatoAttuale;
 
         lcd.setCursor(0, 1);
@@ -1631,11 +1631,9 @@ void loop() {
 
         // CONTATTO PISTOLA DIESEL
 
-        //if ((PINA & _BV(PA1)) && (mezzo.Carb == "D"))
-		if (!testbit(PINA,1) && (mezzo.Carb == "D"))
+ 		if (!testbit(PINA,1) && (mezzo.Carb == "D"))
         {
           RaccoltaDati[3] = String(lt);
-          // RaccoltaDati[3] = "5.50";
           StatoAttuale = "STOP EROGAZIONE";
           Rele_Abilitazione2(1, 7); //  apri relè
           Rele_Abilitazione1(1, 7); //  apri relè
@@ -1645,11 +1643,9 @@ void loop() {
 
         // CONTATTO PISTOLA BENZINA
 
-        //if  ((PINB & _BV(PB1)) && (mezzo.Carb == "B"))
 		if (!testbit(PINB,1) && (mezzo.Carb == "B"))
         {
           RaccoltaDati[3] = String(lt);
-
           StatoAttuale = "STOP EROGAZIONE";
           Rele_Abilitazione2(1, 7); //  apri relè
           Rele_Abilitazione1(1, 7); //  apri relè
@@ -1730,6 +1726,13 @@ void loop() {
       break;
     case 10:
       {
+			 Buzzer(1,100);
+			 _delay_ms(100);
+			 Buzzer(1,100);
+			 _delay_ms(100);
+			 Buzzer(1,100);
+			 _delay_ms(100);
+			 
              String str_indirizzo  = read_eeprom_string(4,1035);
              int ultimo_indirizzo = (str_indirizzo.toInt());
              int start = 2000;
@@ -1764,8 +1767,8 @@ void loop() {
 
   nowTimer = DS3231M.now();
   secs = nowTimer.secondstime();  
-  if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura != 6)) Azzera();
-  else if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura == 6)) avanzaStato(30);
+  if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura != stato_erogazione)) Azzera();
+  else if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura == stato_erogazione)) avanzaStato(TmaxInviodati);
 }
 
 /********************FINE LOOP PROCEDURA************************************/
@@ -1780,7 +1783,7 @@ void loop() {
 ***********************************************************************/
 
 ISR(PCINT0_vect) {
-  if ((stato_procedura == stato_erogazione)) //&& ((impulsi/ImpulsiLitro) > MaxErogabile))
+  if ((stato_procedura == stato_erogazione) && (impulsi < MaxErogabile))
   {
 	  
 	  if ((PINA & _BV(PA5)) && (mezzo.Carb == "D")) {
