@@ -880,6 +880,7 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
     Serial.println(strURLAPI);
     
     ClientHTTP.print(strURLAPI);
+	//_delay_ms(100);
     _delay_ms(200);
     //_delay_ms(500);
     
@@ -1330,7 +1331,7 @@ void loop() {
 
   switch (stato_procedura) {
     case -2:
-      { // cli(); // disable interrupt        
+      { //cli(); // disable interrupt        
         printLine();
         Serial.print("Parametri CCEC da EEPROM");
         String ServerCCEC = read_eeprom_string_struct(ParametriCCEC[0]);
@@ -1367,8 +1368,10 @@ void loop() {
         righeDisplay[3] = "    Avvicina ATE  ";
         displayLCD(righeDisplay, stato_procedura, 50);
         /************************************************/
+		sei();
+		_delay_ms(1000);
         stato_procedura++;
-        _delay_ms(500);
+        
       }
       break;
     case 1:
