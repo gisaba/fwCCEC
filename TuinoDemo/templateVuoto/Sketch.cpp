@@ -8,6 +8,7 @@
 #include <util/delay.h>
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 /*********************************************************************************************/
 #include <SPI.h>
 #include <Wire.h>
@@ -272,6 +273,8 @@ void clearEEPROM(int ind_from,int ind_to) {
 /************************************************************/
 
 void setup() {
+	
+	wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
 
    /************************************************************/
    /*  DISABILITO PERIFERICHE								   */
@@ -692,8 +695,8 @@ String GetCodeRfidATe()
   uint8_t uidLength;
   String Codice = "ERRORE";
 
-  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
-  //success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength,300);
+  //success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength,2000);
 
   if (success) {
 
@@ -823,9 +826,9 @@ bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String 
   {
     lcd.clear();
     lcd.setCursor(0, 1);
-    lcd.print("Connessione Fallita.");
+    lcd.print("connect failed");
     lcd.setCursor(0, 3);
-    lcd.print("Verificare....");
+    lcd.print("Errore Connessione");
     _delay_ms(1000);
     return false;
   }
@@ -960,6 +963,27 @@ void abilitaPulser(char p_carburante)
   sei();            // enable interrupts
 };
 
+void disabilitaPulser(char p_carburante)
+{
+	_delay_ms(1000);
+
+	PCICR =  0b00000001;
+	
+	if (p_carburante == 'D')
+	{
+		//DDRA &= ~(1 << PA5);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
+		DDRA &= ~(1 << PULSER1);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
+		PCMSK0 = 0b00000000;  // pulser 1 PCINT5
+	}
+	else
+	{
+		//DDRA &= ~(1 << PA6);  // PULSER 2 clear DDRA bit 5, sets PA5 for input
+		DDRA &= ~(1 << PULSER2);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
+		PCMSK0 = 0b00000000;  // pulser 2 PCINT6
+	}
+	cli();            // enable interrupts
+};
+
 
 double impulsiToLitri(int P_impulsi)
 {
@@ -1039,6 +1063,7 @@ void Control_WIFI(int azione) {
 
 void Azzera()
 {
+  
   RispostaHTTP = "";
   impulsi = 0;
   alreadyTimbrata = false;
@@ -1328,7 +1353,7 @@ bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
 }
 /**************************LOOP PROCEDURA************************************/
 void loop() {
-
+		
   switch (stato_procedura) {
     case -2:
       { //cli(); // disable interrupt        
@@ -1359,9 +1384,10 @@ void loop() {
       break;
     case 0:
       {
-        _delay_ms(1000);
+		lcd.noBacklight();
         alreadyTimbrata = false;
         enable_ETH();
+		_delay_ms(10);
         /************************************************/
         righeDisplay[1] = " * AUTENTICAZIONE *";
         righeDisplay[2] = "";
@@ -1370,8 +1396,9 @@ void loop() {
         /************************************************/
 		sei();
 		_delay_ms(1000);
-        stato_procedura++;
-        
+        //stato_procedura++;
+		avanzaStato(TverificaBadge);
+        //while (1);
       }
       break;
     case 1:
@@ -1384,7 +1411,7 @@ void loop() {
         
         if (!alreadyTimbrata) {
           ATe = GetCodeRfidATe();
-          Buzzer(2, 100);
+          //Buzzer(2, 100);
         }
 
         if ((ATe != "ERRORE") && (BIT_IS_CLEAR(PORTC, 4)))
@@ -1410,7 +1437,7 @@ void loop() {
           displayLCD(righeDisplay, stato_procedura, 100);
           InizializzaEthernet();
           _delay_ms(1000); // tempo per inizializzare la ethernet
-        }
+       //}
 
         // Effettua chiamata REST per validare CARD NFC
         
@@ -1419,13 +1446,13 @@ void loop() {
         righeDisplay[3] = "#:Conferma *:Usa TAG";
 
         // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
-
         if (GetAteCheck(80,serverREST,clientATE,ATe)) 
+		//if (GetAteValidation(80,serverATE,clientATE,ATe))
         {
                 SET_BIT(PORTC,PC4);
                 RaccoltaDati[5] = "000";               
                 Buzzer(1,200);
-//                _delay_ms(50);
+				//_delay_ms(50);
                 avanzaStato(TinputTarga);
          } 
          else 
@@ -1440,7 +1467,8 @@ void loop() {
                 displayLCD(righeDisplay,stato_procedura,10);
                 _delay_ms(1000);
                 Azzera();
-         }      
+         }
+		}    
       }
       break;
     case 2:
@@ -1676,6 +1704,7 @@ void loop() {
           enable_ETH();
           /*****************************************************************/
           _delay_ms(1000);
+		  lcd.noBacklight();
           avanzaStato(30); 
       }
       break;
@@ -1736,6 +1765,9 @@ void loop() {
 			 Buzzer(1,100);
 			 _delay_ms(100);
 			 
+			 disabilitaPulser('D');
+			 disabilitaPulser('B');
+			 
              String str_indirizzo  = read_eeprom_string(4,1035);
              int ultimo_indirizzo = (str_indirizzo.toInt());
              int start = 2000;
@@ -1767,7 +1799,9 @@ void loop() {
       }
       break;
   }
-
+  
+  wdt_reset();
+  
   nowTimer = DS3231M.now();
   secs = nowTimer.secondstime();  
   if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura != stato_erogazione)) Azzera();
