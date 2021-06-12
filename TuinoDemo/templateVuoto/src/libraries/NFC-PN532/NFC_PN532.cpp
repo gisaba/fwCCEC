@@ -4,11 +4,10 @@
 */
 /**************************************************************************/
 
- #include "Arduino.h"
-
+#include "Arduino.h"
 // #include "WProgram.h"
 
-
+#include <util/delay.h>
 #include <Wire.h>
 #define WIRE Wire
 
@@ -36,12 +35,8 @@ byte pn532_packetbuffer[PN532_PACKBUFFSIZ];
 */
 /**************************************************************************/
 static inline void i2c_send(uint8_t x)
-{
- // #if ARDUINO >= 100
+{ 
     WIRE.write((uint8_t)x);
- // #else
- //   WIRE.send(x);
- // #endif
 }
 
 /**************************************************************************/
@@ -51,14 +46,8 @@ static inline void i2c_send(uint8_t x)
 /**************************************************************************/
 static inline uint8_t i2c_recv(void)
 {
- // #if ARDUINO >= 100
     return WIRE.read();
-//  #else
-//    return WIRE.receive();
-//  #endif
 }
-
-
 
 /**************************************************************************/
 /*!
@@ -69,19 +58,12 @@ static inline uint8_t i2c_recv(void)
 */
 /**************************************************************************/
 NFC_PN532::NFC_PN532(uint8_t irq, uint8_t reset):
-  /*_clk(0),
-  _miso(0),
-  _mosi(0),
-  _ss(0),*/
   _irq(irq),
-  _reset(reset),
-  _usingSPI(false),
-  _hardwareSPI(false)
+  _reset(reset)
 {
   pinMode(_irq, INPUT);
   pinMode(_reset, OUTPUT);
 }
-
 
 /**************************************************************************/
 /*!
@@ -93,12 +75,12 @@ void NFC_PN532::begin() {
     // I2C initialization.
     WIRE.begin();
 
-    // Reset the PN532
-    digitalWrite(_reset, HIGH);
-    digitalWrite(_reset, LOW);
-    delay(400);
-    digitalWrite(_reset, HIGH);
-    delay(10);  // Small delay required before taking other actions after reset.
+   // Reset the PN532
+//     digitalWrite(_reset, HIGH);
+//     digitalWrite(_reset, LOW);
+//     delay(400);
+//     digitalWrite(_reset, HIGH);
+    _delay_ms(10);  // Small delay required before taking other actions after reset.
                 // See timing diagram on page 209 of the datasheet, section 12.23.
 }
 
@@ -128,17 +110,6 @@ void NFC_PN532::PrintHex(const byte * data, const uint32_t numBytes)
   PN532DEBUGPRINT.println();
 }
 
-/**************************************************************************/
-/*!
-    @brief  Prints a hexadecimal value in plain characters, along with
-            the char equivalents in the following format
-
-            00 00 00 00 00 00  ......
-
-    @param  data      Pointer to the byte data
-    @param  numBytes  Data length in bytes
-*/
-/**************************************************************************/
 void NFC_PN532::PrintHexChar(const byte * data, const uint32_t numBytes)
 {
   uint32_t szPos;
@@ -183,9 +154,6 @@ String NFC_PN532::GetHexCode(const byte * data, const uint32_t numBytes)
 }
 
 /**************************************************************************/
-
-
-/**************************************************************************/
 /*!
     @brief  Checks the firmware version of the PN5xx chip
 
@@ -212,7 +180,8 @@ uint32_t NFC_PN532::getFirmwareVersion(void) {
     return 0;
   }
 
-  int offset = _usingSPI ? 6 : 7;  // Skip a response byte when using I2C to ignore extra data.
+  //int offset = _usingSPI ? 6 : 7;  // Skip a response byte when using I2C to ignore extra data.
+  int offset = 6;
   response = pn532_packetbuffer[offset++];
   response <<= 8;
   response |= pn532_packetbuffer[offset++];
@@ -261,14 +230,6 @@ bool NFC_PN532::sendCommandCheckAck(uint8_t *cmd, uint8_t cmdlen, uint16_t timeo
       PN532DEBUGPRINT.println(F("No ACK frame received!"));
     #endif
     return false;
-  }
-
-  // For SPI only wait for the chip to be ready again.
-  // This is unnecessary with I2C.
-  if (_usingSPI) {
-    if (!waitready(timeout)) {
-      return false;
-    }
   }
 
   return true; // ack'd command
@@ -323,7 +284,8 @@ bool NFC_PN532::writeGPIO(uint8_t pinstate) {
     PN532DEBUGPRINT.println();
   #endif
 
-  int offset = _usingSPI ? 5 : 6;
+  //int offset = _usingSPI ? 5 : 6;
+  int offset = 5;
   return  (pn532_packetbuffer[offset] == 0x0F);
 }
 
@@ -361,7 +323,8 @@ uint8_t NFC_PN532::readGPIO(void) {
     b8              Interface Mode Pins (not used ... bus select pins)
     b9..10          checksum */
 
-  int p3offset = _usingSPI ? 6 : 7;
+  //int p3offset = _usingSPI ? 6 : 7;
+  int p3offset = 6;
 
   #ifdef PN532DEBUG
     PN532DEBUGPRINT.print(F("Received: "));
@@ -405,7 +368,8 @@ bool NFC_PN532::SAMConfig(void) {
   // read data packet
   readdata(pn532_packetbuffer, 8);
 
-  int offset = _usingSPI ? 5 : 6;
+  //int offset = _usingSPI ? 5 : 6;
+  int offset = 5;
   return  (pn532_packetbuffer[offset] == 0x15);
 }
 
@@ -465,7 +429,7 @@ bool NFC_PN532::readPassiveTargetID(uint8_t cardbaudrate, uint8_t * uid, uint8_t
   }
 
   // wait for a card to enter the field (only possible with I2C)
-  if (!_usingSPI) {
+  
     #ifdef PN532DEBUG
       PN532DEBUGPRINT.println(F("Waiting for IRQ (indicates card presence)"));
     #endif
@@ -475,7 +439,7 @@ bool NFC_PN532::readPassiveTargetID(uint8_t cardbaudrate, uint8_t * uid, uint8_t
       #endif
       return 0x0;
     }
-  }
+  
 
   // read data packet
   readdata(pn532_packetbuffer, 20);
@@ -855,535 +819,38 @@ uint8_t NFC_PN532::mifareclassic_ReadDataBlock (uint8_t blockNumber, uint8_t * d
 /**************************************************************************/
 uint8_t NFC_PN532::mifareclassic_WriteDataBlock (uint8_t blockNumber, uint8_t * data)
 {
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Trying to write 16 bytes to block "));PN532DEBUGPRINT.println(blockNumber);
-  #endif
+//   #ifdef MIFAREDEBUG
+//     PN532DEBUGPRINT.print(F("Trying to write 16 bytes to block "));PN532DEBUGPRINT.println(blockNumber);
+//   #endif
 
   /* Prepare the first command */
   pn532_packetbuffer[0] = PN532_COMMAND_INDATAEXCHANGE;
   pn532_packetbuffer[1] = 1;                      /* Card number */
   pn532_packetbuffer[2] = MIFARE_CMD_WRITE;       /* Mifare Write command = 0xA0 */
   pn532_packetbuffer[3] = blockNumber;            /* Block Number (0..63 for 1K, 0..255 for 4K) */
-  memcpy (pn532_packetbuffer+4, data, 16);          /* Data Payload */
+  memcpy (pn532_packetbuffer+4, data, 16);        /* Data Payload */
 
   /* Send the command */
   if (! sendCommandCheckAck(pn532_packetbuffer, 20))
   {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Failed to receive ACK for write command"));
-    #endif
+//     #ifdef MIFAREDEBUG
+//       PN532DEBUGPRINT.println(F("Failed to receive ACK for write command"));
+//     #endif
     return 0;
   }
-  delay(10);
+  _delay_ms(10);
 
   /* Read the response packet */
   readdata(pn532_packetbuffer, 26);
 
   return 1;
 }
-
-/**************************************************************************/
-/*!
-    Formats a Mifare Classic card to store NDEF Records
-
-    @returns 1 if everything executed properly, 0 for an error
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::mifareclassic_FormatNDEF (void)
-{
-  uint8_t sectorbuffer1[16] = {0x14, 0x01, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1};
-  uint8_t sectorbuffer2[16] = {0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1};
-  uint8_t sectorbuffer3[16] = {0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x78, 0x77, 0x88, 0xC1, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-  // Note 0xA0 0xA1 0xA2 0xA3 0xA4 0xA5 must be used for key A
-  // for the MAD sector in NDEF records (sector 0)
-
-  // Write block 1 and 2 to the card
-  if (!(mifareclassic_WriteDataBlock (1, sectorbuffer1)))
-    return 0;
-  if (!(mifareclassic_WriteDataBlock (2, sectorbuffer2)))
-    return 0;
-  // Write key A and access rights card
-  if (!(mifareclassic_WriteDataBlock (3, sectorbuffer3)))
-    return 0;
-
-  // Seems that everything was OK (?!)
-  return 1;
-}
-
-/**************************************************************************/
-/*!
-    Writes an NDEF URI Record to the specified sector (1..15)
-
-    Note that this function assumes that the Mifare Classic card is
-    already formatted to work as an "NFC Forum Tag" and uses a MAD1
-    file system.  You can use the NXP TagWriter app on Android to
-    properly format cards for this.
-
-    @param  sectorNumber  The sector that the URI record should be written
-                          to (can be 1..15 for a 1K card)
-    @param  uriIdentifier The uri identifier code (0 = none, 0x01 =
-                          "http://www.", etc.)
-    @param  url           The uri text to write (max 38 characters).
-
-    @returns 1 if everything executed properly, 0 for an error
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::mifareclassic_WriteNDEFURI (uint8_t sectorNumber, uint8_t uriIdentifier, const char * url)
-{
-  // Figure out how long the string is
-  uint8_t len = strlen(url);
-
-  // Make sure we're within a 1K limit for the sector number
-  if ((sectorNumber < 1) || (sectorNumber > 15))
-    return 0;
-
-  // Make sure the URI payload is between 1 and 38 chars
-  if ((len < 1) || (len > 38))
-    return 0;
-
-  // Note 0xD3 0xF7 0xD3 0xF7 0xD3 0xF7 must be used for key A
-  // in NDEF records
-
-  // Setup the sector buffer (w/pre-formatted TLV wrapper and NDEF message)
-  uint8_t sectorbuffer1[16] = {0x00, 0x00, 0x03, len+5, 0xD1, 0x01, len+1, 0x55, uriIdentifier, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  uint8_t sectorbuffer2[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  uint8_t sectorbuffer3[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  uint8_t sectorbuffer4[16] = {0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7, 0x7F, 0x07, 0x88, 0x40, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  if (len <= 6)
-  {
-    // Unlikely we'll get a url this short, but why not ...
-    memcpy (sectorbuffer1+9, url, len);
-    sectorbuffer1[len+9] = 0xFE;
-  }
-  else if (len == 7)
-  {
-    // 0xFE needs to be wrapped around to next block
-    memcpy (sectorbuffer1+9, url, len);
-    sectorbuffer2[0] = 0xFE;
-  }
-  else if ((len > 7) && (len <= 22))
-  {
-    // Url fits in two blocks
-    memcpy (sectorbuffer1+9, url, 7);
-    memcpy (sectorbuffer2, url+7, len-7);
-    sectorbuffer2[len-7] = 0xFE;
-  }
-  else if (len == 23)
-  {
-    // 0xFE needs to be wrapped around to final block
-    memcpy (sectorbuffer1+9, url, 7);
-    memcpy (sectorbuffer2, url+7, len-7);
-    sectorbuffer3[0] = 0xFE;
-  }
-  else
-  {
-    // Url fits in three blocks
-    memcpy (sectorbuffer1+9, url, 7);
-    memcpy (sectorbuffer2, url+7, 16);
-    memcpy (sectorbuffer3, url+23, len-24);
-    sectorbuffer3[len-22] = 0xFE;
-  }
-
-  // Now write all three blocks back to the card
-  if (!(mifareclassic_WriteDataBlock (sectorNumber*4, sectorbuffer1)))
-    return 0;
-  if (!(mifareclassic_WriteDataBlock ((sectorNumber*4)+1, sectorbuffer2)))
-    return 0;
-  if (!(mifareclassic_WriteDataBlock ((sectorNumber*4)+2, sectorbuffer3)))
-    return 0;
-  if (!(mifareclassic_WriteDataBlock ((sectorNumber*4)+3, sectorbuffer4)))
-    return 0;
-
-  // Seems that everything was OK (?!)
-  return 1;
-}
-
-/***** Mifare Ultralight Functions ******/
-
-/**************************************************************************/
-/*!
-    Tries to read an entire 4-byte page at the specified address.
-
-    @param  page        The page number (0..63 in most cases)
-    @param  buffer      Pointer to the byte array that will hold the
-                        retrieved data (if any)
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::mifareultralight_ReadPage (uint8_t page, uint8_t * buffer)
-{
-  if (page >= 64)
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Page value out of range"));
-    #endif
-    return 0;
-  }
-
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Reading page "));PN532DEBUGPRINT.println(page);
-  #endif
-
-  /* Prepare the command */
-  pn532_packetbuffer[0] = PN532_COMMAND_INDATAEXCHANGE;
-  pn532_packetbuffer[1] = 1;                   /* Card number */
-  pn532_packetbuffer[2] = MIFARE_CMD_READ;     /* Mifare Read command = 0x30 */
-  pn532_packetbuffer[3] = page;                /* Page Number (0..63 in most cases) */
-
-  /* Send the command */
-  if (! sendCommandCheckAck(pn532_packetbuffer, 4))
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Failed to receive ACK for write command"));
-    #endif
-    return 0;
-  }
-
-  /* Read the response packet */
-  readdata(pn532_packetbuffer, 26);
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.println(F("Received: "));
-    NFC_PN532::PrintHexChar(pn532_packetbuffer, 26);
-  #endif
-
-  /* If byte 8 isn't 0x00 we probably have an error */
-  if (pn532_packetbuffer[7] == 0x00)
-  {
-    /* Copy the 4 data bytes to the output buffer         */
-    /* Block content starts at byte 9 of a valid response */
-    /* Note that the command actually reads 16 byte or 4  */
-    /* pages at a time ... we simply discard the last 12  */
-    /* bytes                                              */
-    memcpy (buffer, pn532_packetbuffer+8, 4);
-  }
-  else
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Unexpected response reading block: "));
-      NFC_PN532::PrintHexChar(pn532_packetbuffer, 26);
-    #endif
-    return 0;
-  }
-
-  /* Display data for debug if requested */
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Page "));PN532DEBUGPRINT.print(page);PN532DEBUGPRINT.println(F(":"));
-    NFC_PN532::PrintHexChar(buffer, 4);
-  #endif
-
-  // Return OK signal
-  return 1;
-}
-
-/**************************************************************************/
-/*!
-    Tries to write an entire 4-byte page at the specified block
-    address.
-
-    @param  page          The page number to write.  (0..63 for most cases)
-    @param  data          The byte array that contains the data to write.
-                          Should be exactly 4 bytes long.
-
-    @returns 1 if everything executed properly, 0 for an error
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::mifareultralight_WritePage (uint8_t page, uint8_t * data)
-{
-
-  if (page >= 64)
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Page value out of range"));
-    #endif
-    // Return Failed Signal
-    return 0;
-  }
-
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Trying to write 4 byte page"));PN532DEBUGPRINT.println(page);
-  #endif
-
-  /* Prepare the first command */
-  pn532_packetbuffer[0] = PN532_COMMAND_INDATAEXCHANGE;
-  pn532_packetbuffer[1] = 1;                      /* Card number */
-  pn532_packetbuffer[2] = MIFARE_ULTRALIGHT_CMD_WRITE;       /* Mifare Ultralight Write command = 0xA2 */
-  pn532_packetbuffer[3] = page;            /* Page Number (0..63 for most cases) */
-  memcpy (pn532_packetbuffer+4, data, 4);          /* Data Payload */
-
-  /* Send the command */
-  if (! sendCommandCheckAck(pn532_packetbuffer, 8))
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Failed to receive ACK for write command"));
-    #endif
-
-    // Return Failed Signal
-    return 0;
-  }
-  delay(10);
-
-  /* Read the response packet */
-  readdata(pn532_packetbuffer, 26);
-
-  // Return OK Signal
-  return 1;
-}
-
-
-/***** NTAG2xx Functions ******/
-
-/**************************************************************************/
-/*!
-    Tries to read an entire 4-byte page at the specified address.
-
-    @param  page        The page number (0..63 in most cases)
-    @param  buffer      Pointer to the byte array that will hold the
-                        retrieved data (if any)
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::ntag2xx_ReadPage (uint8_t page, uint8_t * buffer)
-{
-  // TAG Type       PAGES   USER START    USER STOP
-  // --------       -----   ----------    ---------
-  // NTAG 203       42      4             39
-  // NTAG 213       45      4             39
-  // NTAG 215       135     4             129
-  // NTAG 216       231     4             225
-
-  if (page >= 231)
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Page value out of range"));
-    #endif
-    return 0;
-  }
-
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Reading page "));PN532DEBUGPRINT.println(page);
-  #endif
-
-  /* Prepare the command */
-  pn532_packetbuffer[0] = PN532_COMMAND_INDATAEXCHANGE;
-  pn532_packetbuffer[1] = 1;                   /* Card number */
-  pn532_packetbuffer[2] = MIFARE_CMD_READ;     /* Mifare Read command = 0x30 */
-  pn532_packetbuffer[3] = page;                /* Page Number (0..63 in most cases) */
-
-  /* Send the command */
-  if (! sendCommandCheckAck(pn532_packetbuffer, 4))
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Failed to receive ACK for write command"));
-    #endif
-    return 0;
-  }
-
-  /* Read the response packet */
-  readdata(pn532_packetbuffer, 26);
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.println(F("Received: "));
-    NFC_PN532::PrintHexChar(pn532_packetbuffer, 26);
-  #endif
-
-  /* If byte 8 isn't 0x00 we probably have an error */
-  if (pn532_packetbuffer[7] == 0x00)
-  {
-    /* Copy the 4 data bytes to the output buffer         */
-    /* Block content starts at byte 9 of a valid response */
-    /* Note that the command actually reads 16 byte or 4  */
-    /* pages at a time ... we simply discard the last 12  */
-    /* bytes                                              */
-    memcpy (buffer, pn532_packetbuffer+8, 4);
-  }
-  else
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Unexpected response reading block: "));
-      NFC_PN532::PrintHexChar(pn532_packetbuffer, 26);
-    #endif
-    return 0;
-  }
-
-  /* Display data for debug if requested */
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Page "));PN532DEBUGPRINT.print(page);PN532DEBUGPRINT.println(F(":"));
-    NFC_PN532::PrintHexChar(buffer, 4);
-  #endif
-
-  // Return OK signal
-  return 1;
-}
-
-/**************************************************************************/
-/*!
-    Tries to write an entire 4-byte page at the specified block
-    address.
-
-    @param  page          The page number to write.  (0..63 for most cases)
-    @param  data          The byte array that contains the data to write.
-                          Should be exactly 4 bytes long.
-
-    @returns 1 if everything executed properly, 0 for an error
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::ntag2xx_WritePage (uint8_t page, uint8_t * data)
-{
-  // TAG Type       PAGES   USER START    USER STOP
-  // --------       -----   ----------    ---------
-  // NTAG 203       42      4             39
-  // NTAG 213       45      4             39
-  // NTAG 215       135     4             129
-  // NTAG 216       231     4             225
-
-  if ((page < 4) || (page > 225))
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Page value out of range"));
-    #endif
-    // Return Failed Signal
-    return 0;
-  }
-
-  #ifdef MIFAREDEBUG
-    PN532DEBUGPRINT.print(F("Trying to write 4 byte page"));PN532DEBUGPRINT.println(page);
-  #endif
-
-  /* Prepare the first command */
-  pn532_packetbuffer[0] = PN532_COMMAND_INDATAEXCHANGE;
-  pn532_packetbuffer[1] = 1;                              /* Card number */
-  pn532_packetbuffer[2] = MIFARE_ULTRALIGHT_CMD_WRITE;    /* Mifare Ultralight Write command = 0xA2 */
-  pn532_packetbuffer[3] = page;                           /* Page Number (0..63 for most cases) */
-  memcpy (pn532_packetbuffer+4, data, 4);                 /* Data Payload */
-
-  /* Send the command */
-  if (! sendCommandCheckAck(pn532_packetbuffer, 8))
-  {
-    #ifdef MIFAREDEBUG
-      PN532DEBUGPRINT.println(F("Failed to receive ACK for write command"));
-    #endif
-
-    // Return Failed Signal
-    return 0;
-  }
-  delay(10);
-
-  /* Read the response packet */
-  readdata(pn532_packetbuffer, 26);
-
-  // Return OK Signal
-  return 1;
-}
-
-/**************************************************************************/
-/*!
-    Writes an NDEF URI Record starting at the specified page (4..nn)
-
-    Note that this function assumes that the NTAG2xx card is
-    already formatted to work as an "NFC Forum Tag".
-
-    @param  uriIdentifier The uri identifier code (0 = none, 0x01 =
-                          "http://www.", etc.)
-    @param  url           The uri text to write (null-terminated string).
-    @param  dataLen       The size of the data area for overflow checks.
-
-    @returns 1 if everything executed properly, 0 for an error
-*/
-/**************************************************************************/
-uint8_t NFC_PN532::ntag2xx_WriteNDEFURI (uint8_t uriIdentifier, char * url, uint8_t dataLen)
-{
-  uint8_t pageBuffer[4] = { 0, 0, 0, 0 };
-
-  // Remove NDEF record overhead from the URI data (pageHeader below)
-  uint8_t wrapperSize = 12;
-
-  // Figure out how long the string is
-  uint8_t len = strlen(url);
-
-  // Make sure the URI payload will fit in dataLen (include 0xFE trailer)
-  if ((len < 1) || (len+1 > (dataLen-wrapperSize)))
-    return 0;
-
-  // Setup the record header
-  // See NFCForum-TS-Type-2-Tag_1.1.pdf for details
-  uint8_t pageHeader[12] =
-  {
-    /* NDEF Lock Control TLV (must be first and always present) */
-    0x01,         /* Tag Field (0x01 = Lock Control TLV) */
-    0x03,         /* Payload Length (always 3) */
-    0xA0,         /* The position inside the tag of the lock bytes (upper 4 = page address, lower 4 = byte offset) */
-    0x10,         /* Size in bits of the lock area */
-    0x44,         /* Size in bytes of a page and the number of bytes each lock bit can lock (4 bit + 4 bits) */
-    /* NDEF Message TLV - URI Record */
-    0x03,         /* Tag Field (0x03 = NDEF Message) */
-    len+5,        /* Payload Length (not including 0xFE trailer) */
-    0xD1,         /* NDEF Record Header (TNF=0x1:Well known record + SR + ME + MB) */
-    0x01,         /* Type Length for the record type indicator */
-    len+1,        /* Payload len */
-    0x55,         /* Record Type Indicator (0x55 or 'U' = URI Record) */
-    uriIdentifier /* URI Prefix (ex. 0x01 = "http://www.") */
-  };
-
-  // Write 12 byte header (three pages of data starting at page 4)
-  memcpy (pageBuffer, pageHeader, 4);
-  if (!(ntag2xx_WritePage (4, pageBuffer)))
-    return 0;
-  memcpy (pageBuffer, pageHeader+4, 4);
-  if (!(ntag2xx_WritePage (5, pageBuffer)))
-    return 0;
-  memcpy (pageBuffer, pageHeader+8, 4);
-  if (!(ntag2xx_WritePage (6, pageBuffer)))
-    return 0;
-
-  // Write URI (starting at page 7)
-  uint8_t currentPage = 7;
-  char * urlcopy = url;
-  while(len)
-  {
-    if (len < 4)
-    {
-      memset(pageBuffer, 0, 4);
-      memcpy(pageBuffer, urlcopy, len);
-      pageBuffer[len] = 0xFE; // NDEF record footer
-      if (!(ntag2xx_WritePage (currentPage, pageBuffer)))
-        return 0;
-      // DONE!
-      return 1;
-    }
-    else if (len == 4)
-    {
-      memcpy(pageBuffer, urlcopy, len);
-      if (!(ntag2xx_WritePage (currentPage, pageBuffer)))
-        return 0;
-      memset(pageBuffer, 0, 4);
-      pageBuffer[0] = 0xFE; // NDEF record footer
-      currentPage++;
-      if (!(ntag2xx_WritePage (currentPage, pageBuffer)))
-        return 0;
-      // DONE!
-      return 1;
-    }
-    else
-    {
-      // More than one page of data left
-      memcpy(pageBuffer, urlcopy, 4);
-      if (!(ntag2xx_WritePage (currentPage, pageBuffer)))
-        return 0;
-      currentPage++;
-      urlcopy+=4;
-      len-=4;
-    }
-  }
-
-  // Seems that everything was OK (?!)
-  return 1;
-}
-
 
 /************** high level communication functions (handles both I2C and SPI) */
 
-
 /**************************************************************************/
 /*!
-    @brief  Tries to read the SPI or I2C ACK signal
+    @brief  Tries to read the I2C ACK signal
 */
 /**************************************************************************/
 bool NFC_PN532::readack() {
@@ -1425,7 +892,7 @@ bool NFC_PN532::waitready(uint16_t timeout) {
         return false;
       }
     }
-    delay(10);
+    _delay_ms(10);
   }
   return true;
 }
@@ -1443,7 +910,7 @@ void NFC_PN532::readdata(uint8_t* buff, uint8_t n) {
      // I2C write.
     uint16_t timer = 0;
 
-    delay(2);
+    _delay_ms(2);
 
     #ifdef PN532DEBUG
       PN532DEBUGPRINT.print(F("Reading: "));
@@ -1453,7 +920,7 @@ void NFC_PN532::readdata(uint8_t* buff, uint8_t n) {
     // Discard the leading 0x01
     i2c_recv();
     for (uint8_t i=0; i<n; i++) {
-      delay(1);
+      _delay_ms(1);
       buff[i] = i2c_recv();
       #ifdef PN532DEBUG
         PN532DEBUGPRINT.print(F(" 0x"));
@@ -1488,7 +955,7 @@ void NFC_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen) {
       PN532DEBUGPRINT.print(F("\nSending: "));
     #endif
 
-    delay(2);     // or whatever the delay is for waking up the board
+    _delay_ms(2);     // or whatever the delay is for waking up the board
 
     // I2C START
     WIRE.beginTransmission(PN532_I2C_ADDRESS);
@@ -1532,4 +999,3 @@ void NFC_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen) {
       PN532DEBUGPRINT.println();
     #endif
 }
-/************** low level SPI */

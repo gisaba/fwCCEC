@@ -13,7 +13,6 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <Ethernet2.h>
-#include <Keypad.h>
 #include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
@@ -611,34 +610,26 @@ String scrivi_TAG_Mezzo(char * w_TARGA)
         memcpy(data,w_TARGA, sizeof data); // 1000030442
         success = nfc.mifareclassic_WriteDataBlock (4, data);        
         _delay_ms(100);
-        // Try to read the contents of block 4
-        success = nfc.mifareclassic_ReadDataBlock(4, data);
-
+		        
         Serial.println("LETTURA TARGA");
         String TargaRFID = (char*)data;
-          
+
         if (success)
-        {
-          Serial.println(TargaRFID);
-          if (TargaRFID.length() == 6)
-          {
-            return TargaRFID;
-          }
+        {  
+          if (TargaRFID.length() == 6) {return TargaRFID; }
           // Aspetta prima di leggere una nuova CARD NFC
           _delay_ms(100);
         }
         else
         {
           lcd.clear();
-          lcd.setCursor(0, 1);
-          lcd.print("Blocco KO");
+          lcd.print("RITENTA !!");
         }
       }
       else
       {
         lcd.clear();
-        lcd.setCursor(0, 1);
-        lcd.print("Auth KO");
+        lcd.print("RITENTA !!!");
       }
     }
     Serial.println("");
@@ -1120,7 +1111,7 @@ void Azzera()
 void inputTarga(char T) {
 
   switch (T) {
-    case ('N'): {
+    case ('N'): { NULL;
         // Serial.print("NIENTE");
       }
       break;
@@ -1139,7 +1130,7 @@ void inputTarga(char T) {
       }
       break;
     case ('B'): {
-        if (TARGA.length() == 5) {
+        if ((TARGA.length() == 5) && (TARGA.length() < 8)) {
           char buf[6];     
           String w_TARGA = TARGA + "B";   
           w_TARGA.toCharArray(buf, 7);
@@ -1182,13 +1173,15 @@ void inputTarga(char T) {
       }
       break;
     default:  {
-        TARGA += String(T);
+      if (TARGA.length() < 5) {
+		TARGA += String(T);
 		Buzzer(1,10);
         // _delay_ms(20);
         righeDisplay[1] =  "** TARGA MEZZO **";
         righeDisplay[2] = "TARGA:" + TARGA;
         righeDisplay[3] = "#:Conferma *:Usa TAG";
         displayLCD(righeDisplay, stato_procedura, 10);
+	  }
       }
       break;
   }
@@ -1197,23 +1190,23 @@ void inputTarga(char T) {
 void inputKM(char KM_input) {
 
   switch (KM_input) {
-    case ('N'): {
+    case ('N'): { NULL;
         //  Serial.print("NIENTE");        
       }
       break;
-    case ('A'): {
+    case ('A'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
-    case ('B'): {
+    case ('B'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
-    case ('.'): {
+    case ('.'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
-    case ('*'): {
+    case ('*'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
@@ -1240,7 +1233,7 @@ void inputKM(char KM_input) {
 			     righeDisplay[3] = "POMPA 2";
 			} // chiudi relè
           
-	        mezzo.KM = KM;
+	      mezzo.KM = KM;
           RaccoltaDati[4] = mezzo.KM;
 		  righeDisplay[1] = "SGANCIA PISTOLA";
 		  righeDisplay[2] = "";
@@ -1254,13 +1247,15 @@ void inputKM(char KM_input) {
       }
       break;
     default:  {
-        KM += String(KM_input);
+       if (KM.length() < 4) {
+	    KM += String(KM_input);
 		Buzzer(1,10);
         //_delay_ms(20);
         righeDisplay[1] =  "****** KM ******";
         righeDisplay[2] = "KM:" + KM;
         righeDisplay[3] = "#:Conferma";
         displayLCD(righeDisplay, stato_procedura, 10);
+	   }
       }
       break;
   }
@@ -1442,8 +1437,8 @@ void loop() {
 
           righeDisplay[1] = "  RICONOSCIMENTO ";
           righeDisplay[2] = ".....In Corso.....";
-          //righeDisplay[3] = "   Rfid: " + ATe;
-          righeDisplay[3] = "Attendere.........";
+          righeDisplay[3] = "   Rfid: " + ATe; // COMMENTA in produzione
+          //righeDisplay[3] = "Attendere.........";
           displayLCD(righeDisplay, stato_procedura, 100);
           InizializzaEthernet();
           _delay_ms(1000); // tempo per inizializzare la ethernet
@@ -1458,7 +1453,7 @@ void loop() {
 		//if (GetAteValidation(80,serverATE,clientATE,ATe)) // Server Centrale
 		
         // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
-        if (GetAteCheck(80,serverREST,clientATE,ATe)) 
+        if (1) //(GetAteCheck(80,serverREST,clientATE,ATe)) 
         {
                 //SET_BIT(PORTC,PC4);
 				SET_BIT(PORTC,CS_W5500);

@@ -1,11 +1,11 @@
 
-#ifndef ADAFRUIT_PN532_H
-#define ADAFRUIT_PN532_H
+#ifndef NFC_PN532_H
+#define NFC_PN532_H
 
- #include "Arduino.h"
+// #include "Arduino.h"
 // #include "WProgram.h"
 
-
+#define byte uint8_t
 #define PN532_PREAMBLE                      (0x00)
 #define PN532_STARTCODE1                    (0x00)
 #define PN532_STARTCODE2                    (0xFF)
@@ -148,32 +148,19 @@ class NFC_PN532{
   uint8_t mifareclassic_AuthenticateBlock (uint8_t * uid, uint8_t uidLen, uint32_t blockNumber, uint8_t keyNumber, uint8_t * keyData);
   uint8_t mifareclassic_ReadDataBlock (uint8_t blockNumber, uint8_t * data);
   uint8_t mifareclassic_WriteDataBlock (uint8_t blockNumber, uint8_t * data);
-  uint8_t mifareclassic_FormatNDEF (void);
-  uint8_t mifareclassic_WriteNDEFURI (uint8_t sectorNumber, uint8_t uriIdentifier, const char * url);
-  
-  // Mifare Ultralight functions
-  uint8_t mifareultralight_ReadPage (uint8_t page, uint8_t * buffer);
-  uint8_t mifareultralight_WritePage (uint8_t page, uint8_t * data);
 
-  // NTAG2xx functions
-  uint8_t ntag2xx_ReadPage (uint8_t page, uint8_t * buffer);
-  uint8_t ntag2xx_WritePage (uint8_t page, uint8_t * data);
-  uint8_t ntag2xx_WriteNDEFURI (uint8_t uriIdentifier, char * url, uint8_t dataLen);
-  
   // Help functions to display formatted text
   static void PrintHex(const byte * data, const uint32_t numBytes);
   static void PrintHexChar(const byte * pbtData, const uint32_t numBytes);
   String GetHexCode(const byte * pbtData, const uint32_t numBytes);
 
  private:
-  uint8_t _ss, _clk, _mosi, _miso;
+
   uint8_t _irq, _reset;
   uint8_t _uid[7];       // ISO14443A uid
   uint8_t _uidLen;       // uid len
   uint8_t _key[6];       // Mifare Classic key
   uint8_t _inListedTag;  // Tg number of inlisted tag.
-  bool    _usingSPI;     // True if using SPI, false if using I2C.
-  bool    _hardwareSPI;  // True is using hardware SPI, false if using software SPI.
 
   // Low level communication functions that handle both SPI and I2C.
   void readdata(uint8_t* buff, uint8_t n);
