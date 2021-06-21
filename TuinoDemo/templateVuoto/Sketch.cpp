@@ -278,11 +278,22 @@ void clearEEPROM(int ind_from,int ind_to) {
 	Serial.println(" ");
 	Serial.println(" ");
 }
+
+void WDT_off(void){
+	cli();
+	// wdt_reset();
+	/* Clear WDRF in MCUSR */
+	MCUSR &= ~(1<<WDRF);
+	/* Write logical one to WDCE and WDE *//* Keep old prescaler setting to prevent unintentional time-out */
+	WDTCSR |= (1<<WDCE) | (1<<WDE);
+	/* Turn off WDT */WDTCSR = 0x00;
+	sei();
+}
 /************************************************************/
 
 void setup() {
 	
-	wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
+	WDT_off();
 	
 	/************************************************************/
 	/*  INIT PIN PERIFERICHE										*/
@@ -333,13 +344,14 @@ void setup() {
 
   String app = "";
 
-//   clearEEPROM(0,EEPROM.length());
-//   if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
+// clearEEPROM(0,EEPROM.length());
+// if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+// if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+// if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+// if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
 
   printLine();  
+  
 /*******************************************************************************************/
   DDRC |= (1 << BUZZER); // set pin BUZZER (PC6) for output
   DDRC |= (1 << RELE1);  // Rele1
@@ -437,7 +449,9 @@ void setup() {
   Serial.println(StatoAttuale);
   printLine();
   printLine();
-  printLine();
+  printLine();  
+  
+  wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
 }
 
 /********************************END SETUP ***************************************/
@@ -1105,6 +1119,8 @@ void Azzera()
   Serial.println("Azzera....... OK");
   printLine();
   TARGA = "";
+  wdt_enable(WDTO_8S);
+  // while(1); // Verifico WDT
   stato_procedura = -1;
 }
 
@@ -1357,8 +1373,13 @@ bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
  
  return true;
 }
+
+
+
 /**************************LOOP PROCEDURA************************************/
 void loop() {
+
+  // while(1); // Verifico WDT 
 		
   switch (stato_procedura) {
     case -2:
@@ -1427,8 +1448,8 @@ void loop() {
           Serial.print("***************************************************************");
           Serial.println("Riconoscimento Tessera .............");
 
-           RaccoltaDati[0] = ATe;
-          // RaccoltaDati[0] = "DD92743A";
+          // RaccoltaDati[0] = ATe;
+           RaccoltaDati[0] = "DD92743A";
           // RaccoltaDati[5] = "000";
 
           lcd.backlight();
@@ -1453,7 +1474,7 @@ void loop() {
 		//if (GetAteValidation(80,serverATE,clientATE,ATe)) // Server Centrale
 		
         // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
-        if (1) //(GetAteCheck(80,serverREST,clientATE,ATe)) 
+        if (GetAteCheck(80,serverREST,clientATE,ATe)) 
         {
                 //SET_BIT(PORTC,PC4);
 				SET_BIT(PORTC,CS_W5500);
@@ -1728,14 +1749,13 @@ void loop() {
             disable_ETH();
             _delay_ms(200);
             Serial.println("PostErogazioneGAC - OK" );   
-            Serial.println("Tento la ritrasmisssione di erogazioni salvate non trasmesse" );             
             _delay_ms(2);
             enable_ETH();
             _delay_ms(2);
-            avanzaStato(60);                                
+            avanzaStato(20);                                
           }
           else
-          {
+          {			 
              disable_ETH();   
              String ultima_indirizzo  = read_eeprom_string(4,1035);
              int indirizzo = ultima_indirizzo.toInt();
@@ -1756,6 +1776,8 @@ void loop() {
       break;
     case 10:
       {
+		 
+			 Serial.println("Tento la ritrasmisssione di erogazioni salvate non trasmesse" );             
 			 Buzzer(1,100);
 			 _delay_ms(100);
 			 Buzzer(1,100);
@@ -1763,8 +1785,10 @@ void loop() {
 			 Buzzer(1,100);
 			 _delay_ms(100);
 			 
-			 disabilitaPulser('D');
-			 disabilitaPulser('B');
+ 			 disabilitaPulser('D');
+ 			 disabilitaPulser('B');
+
+			 WDT_off();
 			 
              String str_indirizzo  = read_eeprom_string(4,1035);
              int ultimo_indirizzo = (str_indirizzo.toInt());
