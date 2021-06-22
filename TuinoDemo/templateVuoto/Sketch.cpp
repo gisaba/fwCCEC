@@ -289,6 +289,16 @@ void WDT_off(void){
 	/* Turn off WDT */WDTCSR = 0x00;
 	sei();
 }
+
+void WDT_Prescaler_8Sec(void) {
+	cli();
+	// wdt_reset();
+	/* Start timed  equence */
+	WDTCSR |= (1<<WDCE) | (1<<WDE) | (1<<WDIE);
+	/* Set new prescaler(time-out) value = 1024K cycles (~8 s) */
+	WDTCSR  = (1<<WDE) | (1<<WDIE) | (1<<WDP3) | (1<<WDP0);
+	sei();
+	}
 /************************************************************/
 
 void setup() {
@@ -451,7 +461,8 @@ void setup() {
   printLine();
   printLine();  
   
-  wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
+  // wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
+  WDT_Prescaler_8Sec();
 }
 
 /********************************END SETUP ***************************************/
@@ -1025,13 +1036,13 @@ void Rele_Abilitazione1(int p_azione, int p_bit) {
     case 0: // chiudi relè
       {
         CLEAR_BIT(PORTC, PC7); // Rele1*/
-        _delay_ms(50);
+        //_delay_ms();
       }
       break;
     case 1: // apri relè
       {
         SET_BIT(PORTC, p_bit); // Rele1
-        _delay_ms(50);
+        //_delay_ms(50);
       }
       break;
     case 2: // chiudi e apri relè
@@ -1052,13 +1063,13 @@ void Rele_Abilitazione2(int p_azione, int p_bit) {
     case 0:
       {
         CLEAR_BIT(PORTA, p_bit); // Rele2
-        _delay_ms(50);
+        //_delay_ms(50);
       }
       break;
     case 1:
       {
         SET_BIT(PORTA, p_bit); // Rele2
-        _delay_ms(50);
+        //_delay_ms(50);
       }
       break;
     case 2:
@@ -1119,8 +1130,9 @@ void Azzera()
   Serial.println("Azzera....... OK");
   printLine();
   TARGA = "";
-  wdt_enable(WDTO_8S);
-  // while(1); // Verifico WDT
+  //wdt_enable(WDTO_8S);
+  WDT_Prescaler_8Sec();
+  //while(1); // Verifico WDT
   stato_procedura = -1;
 }
 
@@ -1192,8 +1204,9 @@ void inputTarga(char T) {
       if (TARGA.length() < 5) {
 		TARGA += String(T);
 		Buzzer(1,10);
-        // _delay_ms(20);
-        righeDisplay[1] =  "** TARGA MEZZO **";
+        _delay_ms(10);
+        
+		righeDisplay[1] =  "** TARGA MEZZO **";
         righeDisplay[2] = "TARGA:" + TARGA;
         righeDisplay[3] = "#:Conferma *:Usa TAG";
         displayLCD(righeDisplay, stato_procedura, 10);
@@ -1898,4 +1911,38 @@ ISR(PCINT3_vect) {
       }
     }
   }
+}
+
+ISR(WDT_vect)
+{
+  RispostaHTTP = "";
+  impulsi = 0;
+  alreadyTimbrata = false;
+  //Carburante = "X";
+  mezzo.Carb = "X";
+  mezzo.TARGA = "X";
+  mezzo.KM = "0";
+  distr_selezionato = 0;
+
+  Rele_Abilitazione1(1, 7);
+  Rele_Abilitazione2(1, 7);
+  
+  disable_ETH();
+  enable_ETH();
+
+  SET_BIT(PORTA, A1);
+  SET_BIT(PORTA, A2);
+
+  righeDisplay[1] =  "";
+  righeDisplay[2] =  "";
+  righeDisplay[2] =  "";
+ 
+  secs = 0;
+  UltimoPassaggioStato = 0;
+
+  TARGA = "";
+  
+  // WDT_Prescaler_8Sec(); // 
+  //while(1); // Verifico WDT
+  stato_procedura = -1;
 }
