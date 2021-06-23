@@ -164,6 +164,7 @@ unsigned long secs;                            // store the seconds value
 unsigned long UltimoPassaggioStato = 0;        // Timer Stati Procedura
 unsigned long Timer = 0;                       // Timer
 DateTime nowTimer;
+uint32_t temperatura = 0;
 /********************************************************************************************/
 /*                     Timer avanzamento stati
 /********************************************************************************************/
@@ -1387,6 +1388,11 @@ bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
  return true;
 }
 
+void timer_stato(){
+  lcd.setCursor(0, 0);
+  lcd.print((char)1);  // STAMPA LA CLESSIDRA
+  lcd.print("Time: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");// + String(temperatura/100.0) + "°C");  
+}
 
 
 /**************************LOOP PROCEDURA************************************/
@@ -1514,9 +1520,7 @@ void loop() {
       break;
     case 2:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         /*****************************************************************/
         // da commentare
@@ -1543,9 +1547,7 @@ void loop() {
       break;
     case 3:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         if (TARGA.length() == 5)
         {
@@ -1581,9 +1583,7 @@ void loop() {
       break;
     case 4:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         // Verifica scelta distributore
 
@@ -1613,10 +1613,9 @@ void loop() {
       break;
     case 5:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
-        // RaccoltaDati[4] = "1234";        
+		timer_stato();
+        
+		// RaccoltaDati[4] = "1234";        
         /*****************************************************************/
         gpio.setCONFREG(0x3C);
         uint8_t c = gpio.Read_IP_REGISTER();
@@ -1639,9 +1638,7 @@ void loop() {
       break;
 	case 6: 
 	{ 
-		lcd.setCursor(0, 0);
-		lcd.print((char)1);  // STAMPA LA CLESSIDRA
-		lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+	    timer_stato();
 		 
 		if (testbit(PINA,1) && (mezzo.Carb == "D"))
 		{
@@ -1673,9 +1670,7 @@ void loop() {
 	break;
     case 7:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("  Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         double lt = impulsiToLitri(impulsi);
 
@@ -1835,6 +1830,7 @@ void loop() {
       break;
   }
   
+  temperatura = DS3231M.temperature();
   nowTimer = DS3231M.now();
   secs = nowTimer.secondstime();  
   if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura != stato_erogazione)) Azzera();

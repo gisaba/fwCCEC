@@ -1,39 +1,8 @@
-/*******************************************************************************************************************
-** Class definition header for the DS3231M real-time-clock from Maxim integrated, described at                    **
-** https://www.maximintegrated.com/en/products/digital/real-time-clocks/DS3231M.html. The DS3231M's data sheet is **
-** located at https://datasheets.maximintegrated.com/en/ds/DS3231M.pdf.                                           **
-**                                                                                                                **
-** The most recent version of this library can be found at https://github.com/SV-Zanshin/DS3231M and a detailed   **
-** library description is on the library's wiki at https://github.com/SV-Zanshin/DS3231M/wiki                     **
-**                                                                                                                **
-** Use is made of portions of Adafruit's RTClib Version 1.2.0 at https://github.com/adafruit/RTClib which is a    **
-** a fork of the original RTClib from Jeelabs. The code encompasses simple classes for time and date.             **
-**                                                                                                                **
-** Although programming for the Arduino and in c/c++ is new to me, I'm a professional programmer and have learned,**
-** over the years, that it is much easier to ignore superfluous comments than it is to decipher non-existent ones;**
-** so both my comments and variable names tend to be verbose. The code is written to fit in the first 80 spaces   **
-** and the comments start after that and go to column 117 - allowing the code to be printed in A4 landscape mode. **
-**                                                                                                                **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General     **
-** Public License as published by the Free Software Foundation, either version 3 of the License, or (at your      **
-** option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY     **
-** WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the   **
-** GNU General Public License for more details. You should have received a copy of the GNU General Public License **
-** along with this program.  If not, see <http://www.gnu.org/licenses/>.                                          **
-**                                                                                                                **
-** Vers.  Date       Developer                         Comments                                                   **
-** ====== ========== ================================= ========================================================== **
-** 1.0.3  2019-01-27 https://github.com/SV-Zanshin     Issue #4 - incorrect datatype for I2C causes overflow      **
-** 1.0.2  2018-07-02 https://github.com/SV-Zanshin     Added guard code against multiple I2C Speed definitions    **
-** 1.0.2  2018-06-30 https://github.com/SV-Zanshin     Issue #3 - Allow 400KHz I2C bus speed to be set            **
-** 1.0.0  2017-08-19 https://github.com/SV-Zanshin     Initial release                                            **
-** 1.0.0b 2017-08-13 https://github.com/SV-Zanshin     Initial coding                                             **
-**                                                                                                                **
-*******************************************************************************************************************/
+
 #include "Arduino.h"                                                          // Arduino data type definitions    //
 #include <Wire.h>                                                             // Standard I2C "Wire" library      //
 #ifndef DS3231M_h                                                             // Guard code definition            //
-  #define DS3231M_h                                                           // Define the name inside guard code//
+ #define DS3231M_h                                                           // Define the name inside guard code//
   /*****************************************************************************************************************
   ** Declare enumerated types used in the class                                                                   **
   *****************************************************************************************************************/
@@ -133,17 +102,6 @@
       void     adjust(const DateTime& dt);                                    // Set the date and time            //
       DateTime now();                                                         // return time                      //
       int32_t  temperature();                                                 // return clock temp in 100x °C     //
-      void     setAlarm(const uint8_t alarmType,                              // Set an Alarm                     //
-                        const DateTime dt, const bool state = true );         //                                  //
-      bool     isAlarm();                                                     // Return if alarm is triggered     //
-      void     clearAlarm();                                                  // Clear the alarm state flag       //
-      void     kHz32(const bool state);                                       // Turn 32kHz output on or off      //
-      int8_t   getAgingOffset();                                              // Get the clock's aging offset     //
-      int8_t   setAgingOffset(const int8_t agingOffset);                      // Set the clock's aging offset     //
-      uint8_t  weekdayRead();                                                 // Read weekday from RTC            //
-      uint8_t  weekdayWrite(const uint8_t dow);                               // Write weekday to RTC             //
-      void     pinAlarm();                                                    // Make the INTSQW go up on alarm   //
-      void     pinSquareWave();                                               // Make the INTSQW be a 1Hz signal  //
     private:                                                                  // Private methods                  //
       uint8_t  readByte(const uint8_t addr);                                  // Read 1 byte from address on I2C  //
       void     writeByte(const uint8_t addr, const uint8_t data);             // Write 1 byte at address to I2C   //
