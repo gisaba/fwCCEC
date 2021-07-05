@@ -141,14 +141,16 @@ char CodSede[] = "SA1001";
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
 
-IPAddress ipCCEC(192, 168, 0, 50);
+IPAddress ipCCEC(192, 168, 3, 100);
+//IPAddress ipCCEC(192, 168, 0, 50);
 IPAddress myDns(192, 168, 1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
 IPAddress subnet(255, 255, 0, 0); // SUBNET
 
 char serverATE[]  = "wbpate-test.dipvvf.it";
 char serverGAC[]  = "gacweb-test.dipvvf.it";
-char serverREST[] = "ccec.sa.dipvvf.it";
+char serverREST[] = "ccec.no.dipvvf.it";
+//char serverREST[] = "ccec.sa.dipvvf.it";
 
 EthernetClient clientLOCAL;
 EthernetClient clientATE;
@@ -355,13 +357,13 @@ void setup() {
 
   String app = "";
 
-// clearEEPROM(0,EEPROM.length());
-// if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-// if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-// if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
-// if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
-
-  printLine();  
+ clearEEPROM(0,EEPROM.length());
+ if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[4])) { Serial.println("WRITE OK");}
+ printLine();  
   
 /*******************************************************************************************/
   DDRC |= (1 << BUZZER); // set pin BUZZER (PC6) for output
@@ -1408,13 +1410,14 @@ void loop() {
         String ServerCCEC = read_eeprom_string_struct(ParametriCCEC[0]);
         ServerCCEC.toCharArray(serverREST,ServerCCEC.length()+1);
         printLine();
-        String IPCCEC = read_eeprom_string_struct(ParametriCCEC[1]);
+		String IPCCEC = read_eeprom_string_struct(ParametriCCEC[1]); 				
         printLine();
         String Start_save = read_eeprom_string_struct(ParametriCCEC[2]);
         printLine();
         String CSEDE = read_eeprom_string_struct(ParametriCCEC[3]);
         CSEDE.toCharArray(CodSede,CSEDE.length()+1);        
         printLine();
+		ImpulsiLitro = read_eeprom_string_struct(ParametriCCEC[4]).toInt();
         stato_procedura++;
       }
       break;
@@ -1467,8 +1470,8 @@ void loop() {
           Serial.print("***************************************************************");
           Serial.println("Riconoscimento Tessera .............");
 
-          // RaccoltaDati[0] = ATe;
-           RaccoltaDati[0] = "DD92743A";
+          RaccoltaDati[0] = ATe;
+          // RaccoltaDati[0] = "DD92743A";
           // RaccoltaDati[5] = "000";
 
           lcd.backlight();
