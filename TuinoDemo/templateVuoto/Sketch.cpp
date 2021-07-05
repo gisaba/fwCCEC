@@ -476,9 +476,9 @@ void Buzzer(uint8_t p_ripeti, uint32_t p_delay_suono) {
 
   for (int volte = 0; volte < p_ripeti; volte++)
   {
-    //TOGGLE_BIT(PORTC,BUZZER);
+    TOGGLE_BIT(PORTC,BUZZER);
     my_delay_ms(p_delay_suono);
-    //TOGGLE_BIT(PORTC,BUZZER);
+    TOGGLE_BIT(PORTC,BUZZER);
   }
 }
 
