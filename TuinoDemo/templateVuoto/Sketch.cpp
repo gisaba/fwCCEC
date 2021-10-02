@@ -13,7 +13,6 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <Ethernet2.h>
-#include <Keypad.h>
 #include <NFC_PN532.h>
 #include <LiquidCrystal_I2C.h>
 #include <DS3231M.h>
@@ -49,30 +48,41 @@ static const uint8_t PULSER2 = PORTA6;
 static const uint8_t RELE1 = PORTC7;
 static const uint8_t RELE2 = PORTA7;
 /*********************************************************************************************/
-static inline void initSS_FLASH()  { DDRB |= (1 << PB4); } // set DDRB bit 4, sets PB4 for output
-static inline void initSS_ETH()    { DDRC |= (1 << PC4); } // set DDRC bit 4, sets PC4 for output
-static inline void enable_ETH()    { PORTC &= ~(1 << PC4); } // Set 0 Bit 4 PORTC Register
-static inline void enable_FLASH()  { PORTB &= ~(1 << PB4); } // Set 0 Bit 4 PORTB Register
-static inline void disable_ETH()   { PORTC |= (1 << PC4);  } // Set 1 Bit 4 PORTC Register
-static inline void disable_FLASH() { PORTB |= (1 << PB4);  } // Set 1 Bit 4 PORTB Register
-static inline void disable_LORA()  { PORTA |= (1 << PA4);  } // Set 1 Bit 4 PORTA Register
-static inline void disable_GSM()   { PORTD &= ~(1 << PD5); } // Set 0 Bit 5 PORTD Register
-static inline void disable_DTRGSM(){ PORTB |= (1 << PB0); } // Set 1 Bit 5 PORTD Register
-static inline void disable_WIFI()  { PORTB &= ~(1 << PB3);  } // Set 0 Bit 3 PORTB Register
+static inline void initSS_FLASH()  { DDRB |= (1 << SS_FLASH); } // set DDRB bit 4, sets PB4 for output
+static inline void initSS_ETH()    { DDRC |= (1 << CS_W5500); } // set DDRC bit 4, sets PC4 for output
+static inline void initSS_LORA()   { DDRA |= (1 << SS_LORA); }
+static inline void initSS_MOSGSM() { DDRD |= (1 << MOS_GSM); }
+static inline void initSS_DTRGSM() { DDRB |= (1 << DTR_GSM); }
+static inline void initSS_WIFI()   { DDRB |= (1 << EN_WIFI); }
+	
+static inline void enable_ETH()    { PORTC &= ~(1 << CS_W5500); } // Set 0 Bit 4 PORTC Register
+static inline void enable_FLASH()  { PORTB &= ~(1 << SS_FLASH); } // Set 0 Bit 4 PORTB Register
+
+static inline void disable_ETH()   { PORTC |= (1 << CS_W5500);	} // Set 1 Bit 4 PORTC Register
+static inline void disable_FLASH() { PORTB |= (1 << SS_FLASH);  }
+static inline void disable_LORA()  { PORTA |= (1 << SS_LORA);	}
+static inline void disable_MOSGSM(){ PORTD &= ~(1 << MOS_GSM);	}
+static inline void disable_DTRGSM(){ PORTB |= (1 << DTR_GSM);	}
+static inline void disable_WIFI()  { PORTB &= ~(1 << EN_WIFI);  }	
 	
 /***********************************************************************************************/
 #define testbit(var, bit)	( (var & (1 <<(bit)))!=0 )
+#define bitislow(var, bit)	( (var & (1 <<(bit)))==0 )
+#define bitishigh(var, bit)	( (var & (1 <<(bit)))==1 )
+
 #define BIT_IS_SET(byte, bit) (byte & (1 << bit))
 #define BIT_IS_CLEAR(byte, bit) (!(byte & (1 << bit)))
 #define SET_BIT(byte, bit) (byte |= (1 << bit))
 #define CLEAR_BIT(byte, bit) (byte &= ~(1 << bit))
 #define TOGGLE_BIT(byte, bit) (byte ^= (1 << bit))
+
 #define PN532_IRQ   (4)
 #define PN532_RESET (3)  // Not connected by default on the NFC Shield
 #define NUM_OF_CONSECUTIVE_PRESSES 1
 #define NUM_OF_CONSECUTIVE_NON_PRESSES 2
-#define stato_distributore 4
-#define stato_erogazione 7
+
+#define stato_distributore 4 // Stato sistema pr la scelta del distributore
+#define stato_erogazione 7	 // Stato Sistema in fase di erogazione
 
 volatile int intConsecutivePresses = 0;
 volatile int intConsecutiveNonPresses = 0;
@@ -102,11 +112,11 @@ String strURLAPI = "";
 unsigned long updatedisplayLCD = 0;
 
 int Litri = 0;              // Variabile per il conteggio dei litri erogati
-int Connected = 0;
-int Autenticato = LOW;      // Semaforo Autenticazione Operatore
+//int Connected = 0; // elimina
+//int Autenticato = LOW;      // Semaforo Autenticazione Operatore // elimina
 int InviaTarga = LOW;       // Semaforo Validazione Targa/Km Mezzo
 int SgancioPistola = HIGH;  // Stato Contatto Pistola
-int GO = LOW;               // Semaforo Generale
+// int GO = LOW;               // Semaforo Generale // elimina
 int stato_procedura = 0;    // Stato del Sistema
 volatile uint16_t impulsi = 0;   // Variabile per il conteggio degli impulsi generati dal pulser
 
@@ -123,17 +133,16 @@ String Messaggio = "";
 String righeDisplay[] = {"X", "X", "X", "X"};
 
 /************* PULSER *************************/
-/**/  int ImpulsiLitro = 100;              /**/
-//    double debounceDelay = 8.20;        /**/   // ms  debounce time; incrementare se l'output oscilla troppo
-//    double debounceDelayBenzina = 8.20; /**/   // ms  debounce time; incrementare se l'output oscilla troppo
-/**/  uint16_t MaxErogabile = 100000;				/**/
+ int ImpulsiLitro = 100;	                /**/
+ uint16_t MaxErogabile = 100000;	   	    /**/
 /**********************************************/
-char CodSede[] = "NO1001";
+char CodSede[] = "SA1001";
 /********************************************************************************************/
 /*                    Configurazione Rete                       */
 /********************************************************************************************/
 
 IPAddress ipCCEC(192, 168, 3, 100);
+//IPAddress ipCCEC(192, 168, 0, 50);
 IPAddress myDns(192, 168, 1, 21); // DNS
 IPAddress gateway(192, 168, 0, 1); // GATEWAY
 IPAddress subnet(255, 255, 0, 0); // SUBNET
@@ -141,6 +150,7 @@ IPAddress subnet(255, 255, 0, 0); // SUBNET
 char serverATE[]  = "wbpate-test.dipvvf.it";
 char serverGAC[]  = "gacweb-test.dipvvf.it";
 char serverREST[] = "ccec.no.dipvvf.it";
+//char serverREST[] = "ccec.sa.dipvvf.it";
 
 EthernetClient clientLOCAL;
 EthernetClient clientATE;
@@ -156,6 +166,7 @@ unsigned long secs;                            // store the seconds value
 unsigned long UltimoPassaggioStato = 0;        // Timer Stati Procedura
 unsigned long Timer = 0;                       // Timer
 DateTime nowTimer;
+uint32_t temperatura = 0;
 /********************************************************************************************/
 /*                     Timer avanzamento stati
 /********************************************************************************************/
@@ -270,11 +281,49 @@ void clearEEPROM(int ind_from,int ind_to) {
 	Serial.println(" ");
 	Serial.println(" ");
 }
+
+void WDT_off(void){
+	cli();
+	// wdt_reset();
+	/* Clear WDRF in MCUSR */
+	MCUSR &= ~(1<<WDRF);
+	/* Write logical one to WDCE and WDE *//* Keep old prescaler setting to prevent unintentional time-out */
+	WDTCSR |= (1<<WDCE) | (1<<WDE);
+	/* Turn off WDT */WDTCSR = 0x00;
+	sei();
+}
+
+void WDT_Prescaler_8Sec(void) {
+	cli();
+	// wdt_reset();
+	/* Start timed  equence */
+	WDTCSR |= (1<<WDCE) | (1<<WDE) | (1<<WDIE);
+	/* Set new prescaler(time-out) value = 1024K cycles (~8 s) */
+	WDTCSR  = (1<<WDE) | (1<<WDIE) | (1<<WDP3) | (1<<WDP0);
+	sei();
+	}
 /************************************************************/
 
 void setup() {
 	
-	wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
+	WDT_off();
+	
+	/************************************************************/
+	/*  INIT PIN PERIFERICHE										*/
+	/************************************************************/
+	initSS_LORA();
+	_delay_ms(10);
+	initSS_MOSGSM();
+	_delay_ms(10);
+	initSS_FLASH;
+	_delay_ms(10);
+	initSS_WIFI();
+	_delay_ms(10);
+	initSS_ETH();
+	_delay_ms(10);
+	initSS_MOSGSM();
+	_delay_ms(10);
+	initSS_DTRGSM();
 
    /************************************************************/
    /*  DISABILITO PERIFERICHE								   */
@@ -308,13 +357,14 @@ void setup() {
 
   String app = "";
 
-//   clearEEPROM(0,EEPROM.length());
-//   if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
-//   if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
-
-  printLine();  
+ clearEEPROM(0,EEPROM.length());
+ if (write_eeprom_string_struct(ParametriCCEC[0])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[1])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[2])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[3])) { Serial.println("WRITE OK");}
+ if (write_eeprom_string_struct(ParametriCCEC[4])) { Serial.println("WRITE OK");}
+ printLine();  
+  
 /*******************************************************************************************/
   DDRC |= (1 << BUZZER); // set pin BUZZER (PC6) for output
   DDRC |= (1 << RELE1);  // Rele1
@@ -324,10 +374,8 @@ void setup() {
   _delay_ms(10);
   SET_BIT(PORTA, RELE2); // Apri RELE2
   printLine();
-
   /***************************LCD******************************/
-
-  lcd.begin(20, 4);        // Inizializza display LCD 20x4 e accendi e spegni 2 volte
+  lcd.begin(20, 4);	 // Inizializza display LCD 20x4 e accendi e spegni 2 volte
 
   // ------- 2 blinks -------------
   for (int i = 0; i < 2; i++)
@@ -414,7 +462,10 @@ void setup() {
   Serial.println(StatoAttuale);
   printLine();
   printLine();
-  printLine();
+  printLine();  
+  
+  // wdt_enable(WDTO_8S); /*Watchdog Reset after 8Sec*/
+  WDT_Prescaler_8Sec();
 }
 
 /********************************END SETUP ***************************************/
@@ -587,34 +638,26 @@ String scrivi_TAG_Mezzo(char * w_TARGA)
         memcpy(data,w_TARGA, sizeof data); // 1000030442
         success = nfc.mifareclassic_WriteDataBlock (4, data);        
         _delay_ms(100);
-        // Try to read the contents of block 4
-        success = nfc.mifareclassic_ReadDataBlock(4, data);
-
+		        
         Serial.println("LETTURA TARGA");
         String TargaRFID = (char*)data;
-          
+
         if (success)
-        {
-          Serial.println(TargaRFID);
-          if (TargaRFID.length() == 6)
-          {
-            return TargaRFID;
-          }
+        {  
+          if (TargaRFID.length() == 6) {return TargaRFID; }
           // Aspetta prima di leggere una nuova CARD NFC
           _delay_ms(100);
         }
         else
         {
           lcd.clear();
-          lcd.setCursor(0, 1);
-          lcd.print("Blocco KO");
+          lcd.print("RITENTA !!");
         }
       }
       else
       {
         lcd.clear();
-        lcd.setCursor(0, 1);
-        lcd.print("Auth KO");
+        lcd.print("RITENTA !!!");
       }
     }
     Serial.println("");
@@ -641,13 +684,13 @@ String leggiTAG_Mezzo(bool scrivi)
       {
         uint8_t data[16];
 
-        // Se il parametro scrivi è true scriviamo sul blocco 4 del TAG
-        if (scrivi)
-        { memcpy(data, (const uint8_t[]) {
-            '2', '8', '5', '3', '1', 'D', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-          }, sizeof data); // 1000030442
-          success = nfc.mifareclassic_WriteDataBlock (4, data);
-        }
+//         // Se il parametro scrivi è true scriviamo sul blocco 4 del TAG
+//         if (scrivi)
+//         { memcpy(data, (const uint8_t[]) {
+//             '2', '8', '5', '3', '1', 'D', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+//           }, sizeof data); // 1000030442
+//           success = nfc.mifareclassic_WriteDataBlock (4, data);
+//         }
 
         // Try to read the contents of block 4
         success = nfc.mifareclassic_ReadDataBlock(4, data);
@@ -680,7 +723,7 @@ String leggiTAG_Mezzo(bool scrivi)
       {
         lcd.clear();
         lcd.setCursor(0, 1);
-        lcd.print("CARD BLOCCATA");
+        lcd.print("RITENTA !!");
       }
     }
     Serial.println("");
@@ -696,7 +739,7 @@ String GetCodeRfidATe()
   String Codice = "ERRORE";
 
   //success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
-  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength,2000);
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength,1000);
 
   if (success) {
 
@@ -815,10 +858,8 @@ bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String 
     strURLAPI += "\r\n";
     Serial.println(strURLAPI);    
     ClientHTTP.print(strURLAPI);
-
-     _delay_ms(200);
-     //_delay_ms(100);
-     //_delay_ms(400);
+     _delay_ms(100);
+  
     ClientHTTP.println("Connection: close");
     ClientHTTP.println();        
   }
@@ -883,13 +924,10 @@ bool PostErogazioneGAC(int Port, char serverREST[], EthernetClient ClientHTTP, S
     Serial.println(strURLAPI);
     
     ClientHTTP.print(strURLAPI);
-	//_delay_ms(100);
-    _delay_ms(200);
-    //_delay_ms(500);
-    
+	_delay_ms(100);
+
     ClientHTTP.println("Connection: close");
-    ClientHTTP.println();    
-    
+    ClientHTTP.println();        
   }
   else
   {
@@ -944,19 +982,17 @@ void abilitaContattiPistola() {
 
 void abilitaPulser(char p_carburante)
 {
-   _delay_ms(1000);
+   _delay_ms(800);
 
   PCICR =  0b00000001;
  
   if (p_carburante == 'D')
   {
-    //DDRA &= ~(1 << PA5);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
 	DDRA &= ~(1 << PULSER1);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
     PCMSK0 = 0b00100000;  // pulser 1 PCINT5
   }
   else
   {
-    //DDRA &= ~(1 << PA6);  // PULSER 2 clear DDRA bit 5, sets PA5 for input
 	DDRA &= ~(1 << PULSER2);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
     PCMSK0 = 0b01000000;  // pulser 2 PCINT6
   }
@@ -965,19 +1001,17 @@ void abilitaPulser(char p_carburante)
 
 void disabilitaPulser(char p_carburante)
 {
-	_delay_ms(1000);
+	_delay_ms(100);
 
 	PCICR =  0b00000001;
 	
 	if (p_carburante == 'D')
 	{
-		//DDRA &= ~(1 << PA5);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
 		DDRA &= ~(1 << PULSER1);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
 		PCMSK0 = 0b00000000;  // pulser 1 PCINT5
 	}
 	else
 	{
-		//DDRA &= ~(1 << PA6);  // PULSER 2 clear DDRA bit 5, sets PA5 for input
 		DDRA &= ~(1 << PULSER2);  // PULSER 1 clear DDRA bit 5, sets PA5 for input
 		PCMSK0 = 0b00000000;  // pulser 2 PCINT6
 	}
@@ -1005,13 +1039,13 @@ void Rele_Abilitazione1(int p_azione, int p_bit) {
     case 0: // chiudi relè
       {
         CLEAR_BIT(PORTC, PC7); // Rele1*/
-        _delay_ms(50);
+        //_delay_ms();
       }
       break;
     case 1: // apri relè
       {
         SET_BIT(PORTC, p_bit); // Rele1
-        _delay_ms(50);
+        //_delay_ms(50);
       }
       break;
     case 2: // chiudi e apri relè
@@ -1032,13 +1066,13 @@ void Rele_Abilitazione2(int p_azione, int p_bit) {
     case 0:
       {
         CLEAR_BIT(PORTA, p_bit); // Rele2
-        _delay_ms(50);
+        //_delay_ms(50);
       }
       break;
     case 1:
       {
         SET_BIT(PORTA, p_bit); // Rele2
-        _delay_ms(50);
+        //_delay_ms(50);
       }
       break;
     case 2:
@@ -1048,16 +1082,6 @@ void Rele_Abilitazione2(int p_azione, int p_bit) {
         SET_BIT(PORTA, p_bit); // Rele2
       }
       break;
-  }
-}
-
-void Control_WIFI(int azione) {
-  DDRB |= (1 << PB3);  // set DDRB bit 3,  sets PB3 for output
-  _delay_ms(30);
-  if (azione == 1) {
-    SET_BIT(PORTB, 3);
-  } else if (azione == 0) {
-    CLEAR_BIT(PORTB, 3);
   }
 }
 
@@ -1075,15 +1099,13 @@ void Azzera()
 
   Rele_Abilitazione1(1, 7);
   Rele_Abilitazione2(1, 7);
-  Control_WIFI(0);
-
   _delay_ms(5);
   clientATE.flush();
   clientATE.stop();
   _delay_ms(5);
   clientLOCAL.flush();
   clientLOCAL.stop();
-  Connected = false;
+  //Connected = false; // Eliminato
   _delay_ms(5);
   
   enable_FLASH();
@@ -1111,13 +1133,16 @@ void Azzera()
   Serial.println("Azzera....... OK");
   printLine();
   TARGA = "";
+  //wdt_enable(WDTO_8S);
+  WDT_Prescaler_8Sec();
+  //while(1); // Verifico WDT
   stato_procedura = -1;
 }
 
 void inputTarga(char T) {
 
   switch (T) {
-    case ('N'): {
+    case ('N'): { NULL;
         // Serial.print("NIENTE");
       }
       break;
@@ -1127,17 +1152,25 @@ void inputTarga(char T) {
           String w_TARGA = TARGA + "D";   
           w_TARGA.toCharArray(buf, 7);
           String mezzoString = scrivi_TAG_Mezzo(buf);
-          _delay_ms(10);          
+          _delay_ms(10);       
+		  Buzzer(1,10);
+		  _delay_ms(10);
+		  Buzzer(1,10); 
+		  _delay_ms(10);  
         }       
       }
       break;
     case ('B'): {
-        if (TARGA.length() == 5) {
+        if ((TARGA.length() == 5) && (TARGA.length() < 8)) {
           char buf[6];     
           String w_TARGA = TARGA + "B";   
           w_TARGA.toCharArray(buf, 7);
           String mezzoString = scrivi_TAG_Mezzo(buf);
-          _delay_ms(10);          
+          _delay_ms(10);
+          Buzzer(1,10);
+          _delay_ms(10);
+          Buzzer(1,10);
+          _delay_ms(10);
         }
       }
       break;
@@ -1171,13 +1204,16 @@ void inputTarga(char T) {
       }
       break;
     default:  {
-        TARGA += String(T);
+      if (TARGA.length() < 5) {
+		TARGA += String(T);
 		Buzzer(1,10);
-        // _delay_ms(20);
-        righeDisplay[1] =  "** TARGA MEZZO **";
+        _delay_ms(10);
+        
+		righeDisplay[1] =  "** TARGA MEZZO **";
         righeDisplay[2] = "TARGA:" + TARGA;
         righeDisplay[3] = "#:Conferma *:Usa TAG";
         displayLCD(righeDisplay, stato_procedura, 10);
+	  }
       }
       break;
   }
@@ -1186,23 +1222,23 @@ void inputTarga(char T) {
 void inputKM(char KM_input) {
 
   switch (KM_input) {
-    case ('N'): {
+    case ('N'): { NULL;
         //  Serial.print("NIENTE");        
       }
       break;
-    case ('A'): {
+    case ('A'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
-    case ('B'): {
+    case ('B'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
-    case ('.'): {
+    case ('.'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
-    case ('*'): {
+    case ('*'): { NULL;
         //  Serial.print("NIENTE");
       }
     break;
@@ -1229,7 +1265,7 @@ void inputKM(char KM_input) {
 			     righeDisplay[3] = "POMPA 2";
 			} // chiudi relè
           
-	        mezzo.KM = KM;
+	      mezzo.KM = KM;
           RaccoltaDati[4] = mezzo.KM;
 		  righeDisplay[1] = "SGANCIA PISTOLA";
 		  righeDisplay[2] = "";
@@ -1243,13 +1279,15 @@ void inputKM(char KM_input) {
       }
       break;
     default:  {
-        KM += String(KM_input);
+       if (KM.length() < 4) {
+	    KM += String(KM_input);
 		Buzzer(1,10);
         //_delay_ms(20);
         righeDisplay[1] =  "****** KM ******";
         righeDisplay[2] = "KM:" + KM;
         righeDisplay[3] = "#:Conferma";
         displayLCD(righeDisplay, stato_procedura, 10);
+	   }
       }
       break;
   }
@@ -1351,8 +1389,18 @@ bool write_eeprom_string(String erog,int lunBuffer,int start_ind) {
  
  return true;
 }
+
+void timer_stato(){
+  lcd.setCursor(0, 0);
+  lcd.print((char)1);  // STAMPA LA CLESSIDRA
+  lcd.print("Time: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");// + String(temperatura/100.0) + "°C");  
+}
+
+
 /**************************LOOP PROCEDURA************************************/
 void loop() {
+
+  // while(1); // Verifico WDT 
 		
   switch (stato_procedura) {
     case -2:
@@ -1362,13 +1410,14 @@ void loop() {
         String ServerCCEC = read_eeprom_string_struct(ParametriCCEC[0]);
         ServerCCEC.toCharArray(serverREST,ServerCCEC.length()+1);
         printLine();
-        String IPCCEC = read_eeprom_string_struct(ParametriCCEC[1]);
+		String IPCCEC = read_eeprom_string_struct(ParametriCCEC[1]); 				
         printLine();
         String Start_save = read_eeprom_string_struct(ParametriCCEC[2]);
         printLine();
         String CSEDE = read_eeprom_string_struct(ParametriCCEC[3]);
         CSEDE.toCharArray(CodSede,CSEDE.length()+1);        
         printLine();
+		ImpulsiLitro = read_eeprom_string_struct(ParametriCCEC[4]).toInt();
         stato_procedura++;
       }
       break;
@@ -1410,11 +1459,10 @@ void loop() {
         String ATe = "ERRORE";
         
         if (!alreadyTimbrata) {
-          ATe = GetCodeRfidATe();
-          //Buzzer(2, 100);
+          ATe = GetCodeRfidATe();          
         }
 
-        if ((ATe != "ERRORE") && (BIT_IS_CLEAR(PORTC, 4)))
+        if ((ATe != "ERRORE") && (bitislow(PORTC, CS_W5500))) //&& (BIT_IS_CLEAR(PORTC, 4)))
         {
           Serial.println("");
           Serial.print("***************************************************************");
@@ -1422,7 +1470,7 @@ void loop() {
           Serial.print("***************************************************************");
           Serial.println("Riconoscimento Tessera .............");
 
-           RaccoltaDati[0] = ATe;
+          RaccoltaDati[0] = ATe;
           // RaccoltaDati[0] = "DD92743A";
           // RaccoltaDati[5] = "000";
 
@@ -1432,8 +1480,8 @@ void loop() {
 
           righeDisplay[1] = "  RICONOSCIMENTO ";
           righeDisplay[2] = ".....In Corso.....";
-          //righeDisplay[3] = "   Rfid: " + ATe;
-          righeDisplay[3] = "Attendere.........";
+          righeDisplay[3] = "   Rfid: " + ATe; // COMMENTA in produzione
+          //righeDisplay[3] = "Attendere.........";
           displayLCD(righeDisplay, stato_procedura, 100);
           InizializzaEthernet();
           _delay_ms(1000); // tempo per inizializzare la ethernet
@@ -1445,21 +1493,23 @@ void loop() {
         righeDisplay[2] = "TARGA:";
         righeDisplay[3] = "#:Conferma *:Usa TAG";
 
+		//if (GetAteValidation(80,serverATE,clientATE,ATe)) // Server Centrale
+		
         // bool GetAteCheck(int Port, char serverREST[], EthernetClient ClientHTTP, String _idAte)
         if (GetAteCheck(80,serverREST,clientATE,ATe)) 
-		//if (GetAteValidation(80,serverATE,clientATE,ATe))
         {
-                SET_BIT(PORTC,PC4);
+                //SET_BIT(PORTC,PC4);
+				SET_BIT(PORTC,CS_W5500);
                 RaccoltaDati[5] = "000";               
                 Buzzer(1,200);
-				//_delay_ms(50);
+				_delay_ms(200);
                 avanzaStato(TinputTarga);
          } 
          else 
          {
-                SET_BIT(PORTC,PC4);
-                RaccoltaDati[5] = "111";
-                Buzzer(3,200);
+                //SET_BIT(PORTC,PC4);
+				SET_BIT(PORTC,CS_W5500);
+                RaccoltaDati[5] = "111";                
                 lcd.clear();
                 righeDisplay[1] = "***** ERRORE ******";
                 righeDisplay[2] = "  Ate NON VALIDA ";
@@ -1473,9 +1523,7 @@ void loop() {
       break;
     case 2:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         /*****************************************************************/
         // da commentare
@@ -1502,9 +1550,7 @@ void loop() {
       break;
     case 3:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         if (TARGA.length() == 5)
         {
@@ -1540,17 +1586,13 @@ void loop() {
       break;
     case 4:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+        timer_stato();
 
         // Verifica scelta distributore
 
         if ((mezzo.Carb == "B") || (distr_selezionato == 2))
         {
           mezzo.Carb = "B";
-          // abilitaPulser('B');          
-          //Rele_Abilitazione2(0, 7); // chiudi relè
           StatoAttuale = "POMPA 2";
           RaccoltaDati[2] = mezzo.Carb;
           righeDisplay[1] =  "****** KM ******";
@@ -1562,8 +1604,6 @@ void loop() {
         else if ((mezzo.Carb == "D") || (distr_selezionato == 1))
         {
           mezzo.Carb = "D";
-          //abilitaPulser('D');          
-          //Rele_Abilitazione1(0, 7); // chiudi relè
           StatoAttuale = "POMPA 1";
           RaccoltaDati[2] = mezzo.Carb;
           righeDisplay[1] =  "****** KM ******";
@@ -1576,10 +1616,9 @@ void loop() {
       break;
     case 5:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
-        // RaccoltaDati[4] = "1234";        
+		timer_stato();
+        
+		// RaccoltaDati[4] = "1234";        
         /*****************************************************************/
         gpio.setCONFREG(0x3C);
         uint8_t c = gpio.Read_IP_REGISTER();
@@ -1602,9 +1641,7 @@ void loop() {
       break;
 	case 6: 
 	{ 
-		lcd.setCursor(0, 0);
-		lcd.print((char)1);  // STAMPA LA CLESSIDRA
-		lcd.print("Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
+	    timer_stato();
 		 
 		if (testbit(PINA,1) && (mezzo.Carb == "D"))
 		{
@@ -1636,15 +1673,7 @@ void loop() {
 	break;
     case 7:
       {
-        lcd.setCursor(0, 0);
-        lcd.print((char)1);  // STAMPA LA CLESSIDRA
-        lcd.print("  Tempo: " + String((UltimoPassaggioStato + Timer - secs - 1)) + " sec ");
-
-        /*****************************************************************
-          disable_ETH();
-          _delay_ms(2);
-          enable_ETH();
-          /*****************************************************************/
+        timer_stato();
 
         double lt = impulsiToLitri(impulsi);
 
@@ -1697,20 +1726,21 @@ void loop() {
 
         Messaggio.concat(CodSede);
         Serial.println("Messaggio:" + Messaggio);
-         // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
-          /*****************************************************************/
-          disable_ETH();
-          _delay_ms(2);
-          enable_ETH();
-          /*****************************************************************/
-          _delay_ms(1000);
-		  lcd.noBacklight();
-          avanzaStato(30); 
+        // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
+        /*****************************************************************/
+        disable_ETH();
+        _delay_ms(2);
+        enable_ETH();
+        /*****************************************************************/
+        _delay_ms(500); // prima era _delay_ms(1000);
+		lcd.noBacklight();
+        avanzaStato(30); 
       }
       break;
     case 9:
       {        
-        if (BIT_IS_CLEAR(PORTC, 4))
+        //if (BIT_IS_CLEAR(PORTC, 4))
+		if (bitislow(PORTC,CS_W5500))
         {
           displayLCD(righeDisplay, stato_procedura, 10);
           Messaggio = "";
@@ -1723,21 +1753,20 @@ void loop() {
 
           // Messaggio = "DD92743A;28530;D;15.03;1234;000;SA10012";
 
-          _delay_ms(1000);
+          _delay_ms(200); // prima era _delay_ms(1000);
 
           if (PostErogazioneGAC(80, serverREST, clientLOCAL, Messaggio))
           {
             disable_ETH();
             _delay_ms(200);
             Serial.println("PostErogazioneGAC - OK" );   
-            Serial.println("Tento la ritrasmisssione di erogazioni salvate non trasmesse" );             
             _delay_ms(2);
             enable_ETH();
             _delay_ms(2);
-            avanzaStato(60);                                
+            avanzaStato(20);                                
           }
           else
-          {
+          {			 
              disable_ETH();   
              String ultima_indirizzo  = read_eeprom_string(4,1035);
              int indirizzo = ultima_indirizzo.toInt();
@@ -1758,6 +1787,8 @@ void loop() {
       break;
     case 10:
       {
+		 
+			 Serial.println("Tento la ritrasmisssione di erogazioni salvate non trasmesse" );             
 			 Buzzer(1,100);
 			 _delay_ms(100);
 			 Buzzer(1,100);
@@ -1765,8 +1796,10 @@ void loop() {
 			 Buzzer(1,100);
 			 _delay_ms(100);
 			 
-			 disabilitaPulser('D');
-			 disabilitaPulser('B');
+ 			 disabilitaPulser('D');
+ 			 disabilitaPulser('B');
+
+			 WDT_off();
 			 
              String str_indirizzo  = read_eeprom_string(4,1035);
              int ultimo_indirizzo = (str_indirizzo.toInt());
@@ -1800,12 +1833,13 @@ void loop() {
       break;
   }
   
-  wdt_reset();
-  
+  temperatura = DS3231M.temperature();
   nowTimer = DS3231M.now();
   secs = nowTimer.secondstime();  
   if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura != stato_erogazione)) Azzera();
   else if (((UltimoPassaggioStato + Timer - secs) <= 1) && (stato_procedura == stato_erogazione)) avanzaStato(TmaxInviodati);
+  
+  wdt_reset(); // Reset watchdog Timer
 }
 
 /********************FINE LOOP PROCEDURA************************************/
@@ -1876,4 +1910,38 @@ ISR(PCINT3_vect) {
       }
     }
   }
+}
+
+ISR(WDT_vect)
+{
+  RispostaHTTP = "";
+  impulsi = 0;
+  alreadyTimbrata = false;
+  //Carburante = "X";
+  mezzo.Carb = "X";
+  mezzo.TARGA = "X";
+  mezzo.KM = "0";
+  distr_selezionato = 0;
+
+  Rele_Abilitazione1(1, 7);
+  Rele_Abilitazione2(1, 7);
+  
+  disable_ETH();
+  enable_ETH();
+
+  SET_BIT(PORTA, A1);
+  SET_BIT(PORTA, A2);
+
+  righeDisplay[1] =  "";
+  righeDisplay[2] =  "";
+  righeDisplay[2] =  "";
+ 
+  secs = 0;
+  UltimoPassaggioStato = 0;
+
+  TARGA = "";
+  
+  // WDT_Prescaler_8Sec(); // 
+  //while(1); // Verifico WDT
+  stato_procedura = -1;
 }
