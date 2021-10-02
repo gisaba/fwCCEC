@@ -2,8 +2,11 @@
 
 ![immagine](https://user-images.githubusercontent.com/45388549/135711497-e4c92e72-f450-4b56-9540-b4cf2a5b6a79.png)
 
+## Firmware
 
-### Descrizione 
+In questo repository il firmware per il suo funzionamento
+
+### Descrizione apparato
 
 Apparato per la rendicontazione automatica carburanti. L'accesso al distributore viene controllato attreaverso l'autenticazione tramite NFC. Ogni operatore abilitato al lrifornimento dovrà autenticarsi tramite la propria tessera NFC ed inserire i dati relativi al mezzo : 
 
